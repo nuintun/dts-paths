@@ -1,2 +1,3 @@
 # dts-paths
-Replace alias paths with relative paths after typescript compilation
+
+> Replace alias paths with relative paths after typescript compilation.

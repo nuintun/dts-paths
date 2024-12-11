@@ -1,0 +1,29 @@
+{
+  "name": "dts-paths",
+  "version": "0.0.0",
+  "description": "Replace alias paths with relative paths after typescript compilation.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [
+    "cjs",
+    "esm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuintun/dts-paths.git"
+  },
+  "keywords": [
+    "dts"
+  ],
+  "author": {
+    "name": "nuintun",
+    "email": "nuintun@qq.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nuintun/dts-paths/issues"
+  },
+  "homepage": "https://github.com/nuintun/dts-paths#readme"
+}
