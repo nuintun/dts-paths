@@ -2,17 +2,15 @@
   "name": "dts-paths",
   "version": "0.0.0",
   "description": "Replace alias paths with relative paths after typescript compilation.",
-  "main": "index.js",
-  "scripts": {
-    "lint": "tsc --noEmit",
-    "test": "node tests/index.js",
-    "clean": "node tools/clean.js",
-    "prepublishOnly": "npm run build",
-    "build:cjs": "rollup -c tools/rollup.cjs.js",
-    "build:esm": "rollup -c tools/rollup.esm.js",
-    "format": "prettier --write . --ignore-path .prettierignore",
-    "build": "npm run clean && npm run build:main && npm run format",
-    "build:main": "npm run build:cjs && npm run build:esm && node tools/fix-types.js"
+  "type": "module",
+  "sideEffects": false,
+  "main": "cjs/index.cjs",
+  "module": "esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.cjs"
+    }
   },
   "files": [
     "cjs",
@@ -34,6 +32,17 @@
     "url": "https://github.com/nuintun/dts-paths/issues"
   },
   "homepage": "https://github.com/nuintun/dts-paths#readme",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "node tests/index.js",
+    "clean": "node tools/clean.js",
+    "prepublishOnly": "npm run build",
+    "build:cjs": "rollup -c tools/rollup.cjs.js",
+    "build:esm": "rollup -c tools/rollup.esm.js",
+    "format": "prettier --write . --ignore-path .prettierignore",
+    "build": "npm run clean && npm run build:main && npm run format",
+    "build:main": "npm run build:cjs && npm run build:esm && node tools/fix-types.js"
+  },
   "dependencies": {
     "ts-morph": "^24.0.0"
   },
