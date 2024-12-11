@@ -25,5 +25,15 @@
   "bugs": {
     "url": "https://github.com/nuintun/dts-paths/issues"
   },
-  "homepage": "https://github.com/nuintun/dts-paths#readme"
+  "homepage": "https://github.com/nuintun/dts-paths#readme",
+  "dependencies": {
+    "ts-morph": "^24.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.1",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.28.1",
+    "tsc-alias": "^1.8.10",
+    "typescript": "^5.7.2"
+  }
 }
