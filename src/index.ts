@@ -5,50 +5,64 @@
 import { resolve } from 'node:path';
 import { Project, ts } from 'ts-morph';
 
-const project = new Project({
-  skipAddingFilesFromTsConfig: true,
-  tsConfigFilePath: resolve('tests/tsconfig.json'),
-  resolutionHost(moduleResolutionHost, getCompilerOptions) {
-    const compilerOptions = getCompilerOptions();
+export default function resolvePaths(): Promise<void> {
+  const mapping: Map<string, string> = new Map();
 
-    return {
-      resolveModuleNames(moduleNames, containingFile) {
-        const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
+  const project = new Project({
+    compilerOptions: {
+      declarationDir: resolve('tests/changed')
+    },
+    skipAddingFilesFromTsConfig: true,
+    tsConfigFilePath: resolve('tests/tsconfig.json'),
+    resolutionHost(moduleResolutionHost, getCompilerOptions) {
+      const compilerOptions = getCompilerOptions();
 
-        for (const moduleName of moduleNames) {
-          const { resolvedModule } = ts.resolveModuleName(
-            // 模块名称
-            moduleName,
-            // 当前文件
-            containingFile,
-            // 编译选项
-            compilerOptions,
-            // 模块解析器
-            moduleResolutionHost
-          );
+      return {
+        resolveModuleNames(moduleNames, containingFile) {
+          const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
 
-          resolvedModules.push(resolvedModule);
+          for (const moduleName of moduleNames) {
+            const { resolvedModule } = ts.resolveModuleName(
+              // 模块名称
+              moduleName,
+              // 当前文件
+              containingFile,
+              // 编译选项
+              compilerOptions,
+              // 模块解析器
+              moduleResolutionHost
+            );
 
-          if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
-            console.log(moduleName, resolvedModule.resolvedFileName);
+            resolvedModules.push(resolvedModule);
+
+            if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
+              mapping.set(moduleName, resolvedModule.resolvedFileName);
+            }
           }
+
+          return resolvedModules;
         }
+      };
+    }
+  });
 
-        return resolvedModules;
+  const sourceFiles = project.addSourceFilesAtPaths('tests/types/**/*.{ts,cts}');
+
+  for (const sourceFile of sourceFiles) {
+    const sourceFilePath = sourceFile.getFilePath();
+    const literals = sourceFile.getImportStringLiterals();
+
+    for (const literal of literals) {
+      const alias = literal.getLiteralValue();
+      const file = mapping.get(alias);
+
+      if (file) {
+        const relative = sourceFile.getRelativePathAsModuleSpecifierTo(file);
+
+        console.log(sourceFilePath, alias, `${relative}.js`);
       }
-    };
+    }
   }
-});
 
-const sourceFiles = project.addSourceFilesAtPaths('tests/types/**/*.{ts,cts}');
-
-for (const sourceFile of sourceFiles) {
-  const sourceFilePath = sourceFile.getFilePath();
-  const literals = sourceFile.getImportStringLiterals();
-
-  for (const literal of literals) {
-    const file = literal.getLiteralValue();
-
-    console.log(sourceFilePath, file, sourceFile.getRelativePathAsModuleSpecifierTo(file));
-  }
+  return project.save();
 }
