@@ -6,21 +6,26 @@ import { resolve } from 'node:path';
 import { Project, ts } from 'ts-morph';
 
 const project = new Project({
+  useInMemoryFileSystem: true,
   skipAddingFilesFromTsConfig: true,
   tsConfigFilePath: resolve('tests/tsconfig.json'),
   resolutionHost(moduleResolutionHost, getCompilerOptions) {
+    const compilerOptions = getCompilerOptions();
+
     return {
       resolveModuleNames(moduleNames, containingFile) {
-        const compilerOptions = getCompilerOptions();
         const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
 
         for (const moduleName of moduleNames) {
           const { resolvedModule } = ts.resolveModuleName(
+            // 模块名称
             moduleName,
+            // 当前文件
             containingFile,
+            // 编译选项
             compilerOptions,
-            moduleResolutionHost,
-            ts.createModuleResolutionCache('.ts', name => name)
+            // 模块解析器
+            moduleResolutionHost
           );
 
           resolvedModules.push(resolvedModule);
