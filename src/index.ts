@@ -5,6 +5,8 @@
 import { resolve } from 'node:path';
 import { Project, ts } from 'ts-morph';
 
+const EXT_RE = /\.(?:(?:d\.)?[cm]?tsx?|[cm]?jsx?)$/i;
+
 export default function resolvePaths(): Promise<void> {
   const mapping: Map<string, string> = new Map();
 
@@ -57,9 +59,9 @@ export default function resolvePaths(): Promise<void> {
       const file = mapping.get(alias);
 
       if (file) {
-        const relative = sourceFile.getRelativePathAsModuleSpecifierTo(file);
+        const relative = sourceFile.getRelativePathTo(file);
 
-        console.log(sourceFilePath, alias, `${relative}.js`);
+        console.log(sourceFilePath, alias, `${relative.replace(EXT_RE, '')}.js`);
       }
     }
   }
