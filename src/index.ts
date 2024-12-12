@@ -6,7 +6,6 @@ import { resolve } from 'node:path';
 import { Project, ts } from 'ts-morph';
 
 const project = new Project({
-  useInMemoryFileSystem: true,
   skipAddingFilesFromTsConfig: true,
   tsConfigFilePath: resolve('tests/tsconfig.json'),
   resolutionHost(moduleResolutionHost, getCompilerOptions) {
