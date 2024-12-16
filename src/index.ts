@@ -7,19 +7,19 @@ import { Project, ProjectOptions, SourceFile, ts } from 'ts-morph';
 
 const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
-type PickedProps = 'tsConfigFilePath' | 'compilerOptions';
+type TsMorphConfigKeys = 'tsConfigFilePath' | 'compilerOptions';
 
-export interface Options extends Pick<ProjectOptions, PickedProps> {
+export interface Options extends Pick<ProjectOptions, TsMorphConfigKeys> {
   exclude?: string[];
 }
 
-function getRelativeModuleName(resolvedFilePath: string, sourceFile: SourceFile) {
-  const relativeFilePath = sourceFile.getRelativePathTo(resolvedFilePath);
-  const moduleName = relativeFilePath.replace(EXT_RE, (match, ts?: string, js?: string) => {
-    const ext = ts || js;
+function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile) {
+  const relativePath = sourceFile.getRelativePathTo(resolvedFilePath);
+  const modulePath = relativePath.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
+    const fileExt = tsExt || jsExt;
 
-    if (ext) {
-      switch (ext.toLowerCase()) {
+    if (fileExt) {
+      switch (fileExt.toLowerCase()) {
         case 'ts':
         case 'tsx':
           return '.js';
@@ -33,15 +33,14 @@ function getRelativeModuleName(resolvedFilePath: string, sourceFile: SourceFile)
           return match;
       }
     }
-
     return match;
   });
 
-  return moduleName.startsWith('.') ? moduleName : `./${moduleName}`;
+  return modulePath.startsWith('.') ? modulePath : `./${modulePath}`;
 }
 
 export default function resolvePaths(root: string, options: Options = {}): Promise<void> {
-  const importsMap: Map<string, Map<string, string>> = new Map();
+  const moduleResolution: Map<string, Map<string, string>> = new Map();
   const { tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
 
   const project = new Project({
@@ -54,10 +53,10 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
       return {
         resolveModuleNames(moduleNames, containingFile) {
           const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
-          const resolutionsMap = importsMap.get(containingFile) || new Map<string, string>();
+          const resolvedImports = moduleResolution.get(containingFile) || new Map<string, string>();
 
-          if (!importsMap.has(containingFile)) {
-            importsMap.set(containingFile, resolutionsMap);
+          if (!moduleResolution.has(containingFile)) {
+            moduleResolution.set(containingFile, resolvedImports);
           }
 
           for (const moduleName of moduleNames) {
@@ -75,7 +74,7 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
             resolvedModules.push(resolvedModule);
 
             if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
-              resolutionsMap.set(moduleName, resolvedModule.resolvedFileName);
+              resolvedImports.set(moduleName, resolvedModule.resolvedFileName);
             }
           }
 
@@ -92,17 +91,17 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
 
   for (const sourceFile of sourceFiles) {
     const sourceFilePath = sourceFile.getFilePath();
-    const resolutionsMap = importsMap.get(sourceFilePath);
+    const resolvedImports = moduleResolution.get(sourceFilePath);
 
-    if (resolutionsMap) {
+    if (resolvedImports) {
       const importLiterals = sourceFile.getImportStringLiterals();
 
       for (const importLiteral of importLiterals) {
         const moduleName = importLiteral.getLiteralValue();
-        const resolvedFilePath = resolutionsMap.get(moduleName);
+        const resolvedFilePath = resolvedImports.get(moduleName);
 
         if (resolvedFilePath) {
-          console.log(getRelativeModuleName(resolvedFilePath, sourceFile));
+          console.log(getRelativeModulePath(resolvedFilePath, sourceFile));
         }
       }
     }
