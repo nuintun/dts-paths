@@ -108,7 +108,7 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
         const resolvedFilePath = resolvedImports.get(moduleName);
 
         if (resolvedFilePath) {
-          console.log(getRelativeModulePath(resolvedFilePath, sourceFile));
+          importLiteral.setLiteralValue(getRelativeModulePath(resolvedFilePath, sourceFile));
         }
       }
     }
