@@ -48,9 +48,10 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
 
 export default function resolvePaths(root: string, options: Options = {}): Promise<void> {
   const moduleResolution: Map<string, Map<string, string>> = new Map();
-  const { tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
+  const { compilerOptions, tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
 
   const project = new Project({
+    compilerOptions,
     skipAddingFilesFromTsConfig: true,
     skipFileDependencyResolution: true,
     tsConfigFilePath: resolve(tsConfigFilePath),
