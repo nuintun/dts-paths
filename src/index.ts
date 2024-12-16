@@ -20,19 +20,26 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
 
     if (fileExt) {
       switch (fileExt.toLowerCase()) {
+        case 'js':
         case 'ts':
+        case 'jsx':
         case 'tsx':
           return '.js';
+        case 'cjs':
         case 'cts':
+        case 'cjsx':
         case 'ctsx':
           return '.cjs';
+        case 'mjs':
         case 'mts':
+        case 'mjsx':
         case 'mtsx':
           return '.mjs';
         default:
           return match;
       }
     }
+
     return match;
   });
 
@@ -84,7 +91,7 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
     }
   });
 
-  const include = resolve(root, '**/*.{ts,cts}');
+  const include = resolve(root, '**/*.{ts,cts,mts,tsx,ctsx,mtsx}');
   const sourceFiles = project.addSourceFilesAtPaths([include, ...exclude]);
 
   project.resolveSourceFileDependencies();
