@@ -8,12 +8,9 @@ import { Project, ts } from 'ts-morph';
 const EXT_RE = /\.(?:(?:d\.)?[cm]?tsx?|[cm]?jsx?)$/i;
 
 export default function resolvePaths(): Promise<void> {
-  const mapping: Map<string, string> = new Map();
+  const importsMap: Map<string, Map<string, string>> = new Map();
 
   const project = new Project({
-    compilerOptions: {
-      declarationDir: resolve('tests/changed')
-    },
     skipAddingFilesFromTsConfig: true,
     tsConfigFilePath: resolve('tests/tsconfig.json'),
     resolutionHost(moduleResolutionHost, getCompilerOptions) {
@@ -22,6 +19,11 @@ export default function resolvePaths(): Promise<void> {
       return {
         resolveModuleNames(moduleNames, containingFile) {
           const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
+          const resolutionsMap = importsMap.get(containingFile) || new Map<string, string>();
+
+          if (!importsMap.has(containingFile)) {
+            importsMap.set(containingFile, resolutionsMap);
+          }
 
           for (const moduleName of moduleNames) {
             const { resolvedModule } = ts.resolveModuleName(
@@ -38,7 +40,7 @@ export default function resolvePaths(): Promise<void> {
             resolvedModules.push(resolvedModule);
 
             if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
-              mapping.set(moduleName, resolvedModule.resolvedFileName);
+              resolutionsMap.set(moduleName, resolvedModule.resolvedFileName);
             }
           }
 
@@ -52,16 +54,20 @@ export default function resolvePaths(): Promise<void> {
 
   for (const sourceFile of sourceFiles) {
     const sourceFilePath = sourceFile.getFilePath();
-    const literals = sourceFile.getImportStringLiterals();
+    const resolutionsMap = importsMap.get(sourceFilePath);
 
-    for (const literal of literals) {
-      const alias = literal.getLiteralValue();
-      const file = mapping.get(alias);
+    if (resolutionsMap) {
+      const importLiterals = sourceFile.getImportStringLiterals();
 
-      if (file) {
-        const relative = sourceFile.getRelativePathTo(file);
+      for (const importLiteral of importLiterals) {
+        const moduleName = importLiteral.getLiteralValue();
+        const resolvedFilePath = resolutionsMap.get(moduleName);
 
-        console.log(sourceFilePath, alias, `${relative.replace(EXT_RE, '')}.js`);
+        if (resolvedFilePath) {
+          const relativeFilePath = sourceFile.getRelativePathTo(resolvedFilePath);
+
+          console.log(sourceFilePath, resolvedFilePath, `${relativeFilePath.replace(EXT_RE, '')}.js`);
+        }
       }
     }
   }
