@@ -1,6 +1,6 @@
 {
   "name": "dts-paths",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Replace alias paths with relative paths after typescript compilation.",
   "type": "module",
   "sideEffects": false,
@@ -39,9 +39,9 @@
     "prepublishOnly": "npm run build",
     "build:cjs": "rollup -c tools/rollup.cjs.js",
     "build:esm": "rollup -c tools/rollup.esm.js",
+    "build:main": "npm run build:cjs && npm run build:esm",
     "format": "prettier --write . --ignore-path .prettierignore",
-    "build": "npm run clean && npm run build:main && npm run format",
-    "build:main": "npm run build:cjs && npm run build:esm && node tools/fix-types.js"
+    "build": "npm run clean && npm run build:main && npm run format"
   },
   "dependencies": {
     "ts-morph": "^24.0.0",
@@ -50,11 +50,10 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/node": "^22.10.2",
-    "magic-string": "^0.30.15",
+    "magic-string": "^0.30.17",
     "prettier": "^3.4.2",
     "rimraf": "^6.0.1",
     "rollup": "^4.28.1",
-    "tsc-alias": "^1.8.10",
     "typescript": "^5.7.2"
   }
 }
