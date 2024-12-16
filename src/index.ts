@@ -11,7 +11,9 @@ export default function resolvePaths(): Promise<void> {
   const importsMap: Map<string, Map<string, string>> = new Map();
 
   const project = new Project({
+    skipLoadingLibFiles: true,
     skipAddingFilesFromTsConfig: true,
+    skipFileDependencyResolution: true,
     tsConfigFilePath: resolve('tests/tsconfig.json'),
     resolutionHost(moduleResolutionHost, getCompilerOptions) {
       const compilerOptions = getCompilerOptions();
@@ -51,6 +53,8 @@ export default function resolvePaths(): Promise<void> {
   });
 
   const sourceFiles = project.addSourceFilesAtPaths('tests/types/**/*.{ts,cts}');
+
+  project.resolveSourceFileDependencies();
 
   for (const sourceFile of sourceFiles) {
     const sourceFilePath = sourceFile.getFilePath();
