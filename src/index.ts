@@ -3,17 +3,51 @@
  */
 
 import { resolve } from 'node:path';
-import { Project, ts } from 'ts-morph';
+import { Project, ProjectOptions, SourceFile, ts } from 'ts-morph';
 
-const EXT_RE = /\.(?:(?:d\.)?[cm]?tsx?|[cm]?jsx?)$/i;
+const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
-export default function resolvePaths(): Promise<void> {
+type PickedProps = 'tsConfigFilePath' | 'compilerOptions';
+
+export interface Options extends Pick<ProjectOptions, PickedProps> {
+  exclude?: string[];
+}
+
+function getRelativeModuleName(resolvedFilePath: string, sourceFile: SourceFile) {
+  const relativeFilePath = sourceFile.getRelativePathTo(resolvedFilePath);
+  const moduleName = relativeFilePath.replace(EXT_RE, (match, ts?: string, js?: string) => {
+    const ext = ts || js;
+
+    if (ext) {
+      switch (ext.toLowerCase()) {
+        case 'ts':
+        case 'tsx':
+          return '.js';
+        case 'cts':
+        case 'ctsx':
+          return '.cjs';
+        case 'mts':
+        case 'mtsx':
+          return '.mjs';
+        default:
+          return match;
+      }
+    }
+
+    return match;
+  });
+
+  return moduleName.startsWith('.') ? moduleName : `./${moduleName}`;
+}
+
+export default function resolvePaths(root: string, options: Options = {}): Promise<void> {
   const importsMap: Map<string, Map<string, string>> = new Map();
+  const { tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
 
   const project = new Project({
     skipAddingFilesFromTsConfig: true,
     skipFileDependencyResolution: true,
-    tsConfigFilePath: resolve('tests/tsconfig.json'),
+    tsConfigFilePath: resolve(tsConfigFilePath),
     resolutionHost(moduleResolutionHost, getCompilerOptions) {
       const compilerOptions = getCompilerOptions();
 
@@ -51,7 +85,8 @@ export default function resolvePaths(): Promise<void> {
     }
   });
 
-  const sourceFiles = project.addSourceFilesAtPaths('tests/types/**/*.{ts,cts}');
+  const include = resolve(root, '**/*.{ts,cts}');
+  const sourceFiles = project.addSourceFilesAtPaths([include, ...exclude]);
 
   project.resolveSourceFileDependencies();
 
@@ -67,9 +102,7 @@ export default function resolvePaths(): Promise<void> {
         const resolvedFilePath = resolutionsMap.get(moduleName);
 
         if (resolvedFilePath) {
-          const relativeFilePath = sourceFile.getRelativePathTo(resolvedFilePath);
-
-          console.log(sourceFilePath, resolvedFilePath, `${relativeFilePath.replace(EXT_RE, '')}.js`);
+          console.log(getRelativeModuleName(resolvedFilePath, sourceFile));
         }
       }
     }
