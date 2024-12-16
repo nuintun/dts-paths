@@ -11,7 +11,6 @@ export default function resolvePaths(): Promise<void> {
   const importsMap: Map<string, Map<string, string>> = new Map();
 
   const project = new Project({
-    skipLoadingLibFiles: true,
     skipAddingFilesFromTsConfig: true,
     skipFileDependencyResolution: true,
     tsConfigFilePath: resolve('tests/tsconfig.json'),
