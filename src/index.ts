@@ -46,6 +46,13 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
   return modulePath.startsWith('.') ? modulePath : `./${modulePath}`;
 }
 
+/**
+ * @function resolvePaths
+ * @description Resolve dts import paths
+ * @param root The root directory of dts
+ * @param options The options of resolve
+ * @return {Promise<Set<string>>}
+ */
 export default async function resolvePaths(root: string, options: Options = {}): Promise<Set<string>> {
   const changed = new Set<string>();
   const moduleResolution = new Map<string, Map<string, string>>();
