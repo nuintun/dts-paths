@@ -7,13 +7,50 @@ import { Project, ProjectOptions, SourceFile, ts } from 'ts-morph';
 
 const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
+function resolveModuleName(
+  moduleName: string,
+  extensions: string[],
+  containingFile: string,
+  compilerOptions: ts.CompilerOptions,
+  moduleResolutionHost: ts.ModuleResolutionHost
+): ts.ResolvedModule | undefined {
+  for (const extension of extensions) {
+    for (const suffix of [`.${extension}`, `/index.${extension}`]) {
+      const { resolvedModule } = ts.resolveModuleName(
+        `${moduleName}${suffix}`,
+        containingFile,
+        compilerOptions,
+        moduleResolutionHost
+      );
+
+      if (resolvedModule) {
+        return resolvedModule;
+      }
+    }
+  }
+
+  const { resolvedModule } = ts.resolveModuleName(
+    // Module name.
+    moduleName,
+    // Containing file.
+    containingFile,
+    // Compiler options.
+    compilerOptions,
+    // Module resolution host
+    moduleResolutionHost
+  );
+
+  return resolvedModule;
+}
+
 type TsMorphConfigKeys = 'tsConfigFilePath' | 'compilerOptions';
 
 export interface Options extends Pick<ProjectOptions, TsMorphConfigKeys> {
   exclude?: string[];
+  extensions?: string[];
 }
 
-function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile) {
+function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile): string {
   const relativePath = sourceFile.getRelativePathTo(resolvedFilePath);
   const modulePath = relativePath.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
     const fileExt = tsExt || jsExt;
@@ -53,10 +90,17 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
  * @param options The options of resolve.
  * @return {Promise<Set<string>>}
  */
-export default async function resolvePaths(root: string, options: Options = {}): Promise<Set<string>> {
+export default async function resolvePaths(
+  root: string,
+  {
+    compilerOptions,
+    exclude = ['node_modules'],
+    tsConfigFilePath = 'tsconfig.json',
+    extensions = ['ts', 'cts', 'mts', 'd.ts', 'd.cts', 'd.mts']
+  }: Options = {}
+): Promise<Set<string>> {
   const changed = new Set<string>();
   const moduleResolution = new Map<string, Map<string, string>>();
-  const { compilerOptions, tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
 
   const project = new Project({
     compilerOptions,
@@ -76,14 +120,11 @@ export default async function resolvePaths(root: string, options: Options = {}):
           }
 
           for (const moduleName of moduleNames) {
-            const { resolvedModule } = ts.resolveModuleName(
-              // 模块名称
+            const resolvedModule = resolveModuleName(
               moduleName,
-              // 当前文件
+              extensions,
               containingFile,
-              // 编译选项
               compilerOptions,
-              // 模块解析器
               moduleResolutionHost
             );
 
@@ -117,9 +158,13 @@ export default async function resolvePaths(root: string, options: Options = {}):
         const resolvedFilePath = resolvedImports.get(moduleName);
 
         if (resolvedFilePath) {
-          changed.add(sourceFilePath);
+          const relativeModulePath = getRelativeModulePath(resolvedFilePath, sourceFile);
 
-          importLiteral.setLiteralValue(getRelativeModulePath(resolvedFilePath, sourceFile));
+          if (relativeModulePath !== moduleName) {
+            changed.add(relativeModulePath);
+
+            importLiteral.setLiteralValue(relativeModulePath);
+          }
         }
       }
     }
