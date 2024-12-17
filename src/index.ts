@@ -161,7 +161,7 @@ export default async function resolvePaths(
           const relativeModulePath = getRelativeModulePath(resolvedFilePath, sourceFile);
 
           if (relativeModulePath !== moduleName) {
-            changed.add(relativeModulePath);
+            changed.add(sourceFilePath);
 
             importLiteral.setLiteralValue(relativeModulePath);
           }
