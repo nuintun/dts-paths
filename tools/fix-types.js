@@ -3,6 +3,7 @@
  */
 
 import { join } from 'node:path';
+import resolvePaths from 'dts-paths';
 import { readdir, rename } from 'node:fs/promises';
 
 /**
@@ -47,9 +48,32 @@ async function renameDts(dir, ext) {
 }
 
 renameDts('cjs', '.d.cts')
-  .then(() => {
-    console.log('fix types done');
+  .then(async () => {
+    return Promise.all([
+      resolvePaths('cjs', {
+        compilerOptions: {
+          paths: {
+            '/*': ['cjs/*']
+          }
+        },
+        extensions: ['.d.cts']
+      }),
+      resolvePaths('esm', {
+        compilerOptions: {
+          paths: {
+            '/*': ['esm/*']
+          }
+        },
+        extensions: ['.d.ts']
+      })
+    ]);
   })
-  .catch(error => {
-    console.error(error);
-  });
+  .then(
+    ([cjs, esm]) => {
+      console.log(`fix cjs types: ${cjs.size} files`);
+      console.log(`fix esm types: ${esm.size} files`);
+    },
+    error => {
+      console.error(error);
+    }
+  );

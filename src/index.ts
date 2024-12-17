@@ -9,17 +9,21 @@ const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
 function resolveModuleName(
   moduleName: string,
-  extensions: string[],
   containingFile: string,
+  extensions: `.${string}`[],
   compilerOptions: ts.CompilerOptions,
   moduleResolutionHost: ts.ModuleResolutionHost
 ): ts.ResolvedModule | undefined {
   for (const extension of extensions) {
-    for (const suffix of [`.${extension}`, `/index.${extension}`]) {
+    for (const suffix of [extension, `/index${extension}`]) {
       const { resolvedModule } = ts.resolveModuleName(
+        // Module name.
         `${moduleName}${suffix}`,
+        // Containing file.
         containingFile,
+        // Compiler options.
         compilerOptions,
+        // Module resolution host.
         moduleResolutionHost
       );
 
@@ -36,7 +40,7 @@ function resolveModuleName(
     containingFile,
     // Compiler options.
     compilerOptions,
-    // Module resolution host
+    // Module resolution host.
     moduleResolutionHost
   );
 
@@ -47,7 +51,7 @@ type TsMorphConfigKeys = 'tsConfigFilePath' | 'compilerOptions';
 
 export interface Options extends Pick<ProjectOptions, TsMorphConfigKeys> {
   exclude?: string[];
-  extensions?: string[];
+  extensions?: `.${string}`[];
 }
 
 function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile): string {
@@ -96,7 +100,7 @@ export default async function resolvePaths(
     compilerOptions,
     exclude = ['node_modules'],
     tsConfigFilePath = 'tsconfig.json',
-    extensions = ['ts', 'cts', 'mts', 'd.ts', 'd.cts', 'd.mts']
+    extensions = ['.ts', '.cts', '.mts', '.d.ts', '.d.cts', '.d.mts']
   }: Options = {}
 ): Promise<Set<string>> {
   const changed = new Set<string>();
@@ -122,8 +126,8 @@ export default async function resolvePaths(
           for (const moduleName of moduleNames) {
             const resolvedModule = resolveModuleName(
               moduleName,
-              extensions,
               containingFile,
+              extensions,
               compilerOptions,
               moduleResolutionHost
             );
