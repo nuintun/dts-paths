@@ -94,7 +94,7 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
  * @param options The options of resolve.
  * @return {Promise<Set<string>>}
  */
-export default async function resolvePaths(
+export async function resolvePaths(
   root: string,
   {
     compilerOptions,
