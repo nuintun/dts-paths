@@ -48,9 +48,9 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
 
 /**
  * @function resolvePaths
- * @description Resolve dts import paths
- * @param root The root directory of dts
- * @param options The options of resolve
+ * @description Resolve dts import paths.
+ * @param root The root directory of dts.
+ * @param options The options of resolve.
  * @return {Promise<Set<string>>}
  */
 export default async function resolvePaths(root: string, options: Options = {}): Promise<Set<string>> {
