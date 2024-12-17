@@ -46,8 +46,9 @@ function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile)
   return modulePath.startsWith('.') ? modulePath : `./${modulePath}`;
 }
 
-export default function resolvePaths(root: string, options: Options = {}): Promise<void> {
-  const moduleResolution: Map<string, Map<string, string>> = new Map();
+export default async function resolvePaths(root: string, options: Options = {}): Promise<Set<string>> {
+  const changed = new Set<string>();
+  const moduleResolution = new Map<string, Map<string, string>>();
   const { compilerOptions, tsConfigFilePath = 'tsconfig.json', exclude = ['node_modules'] } = options;
 
   const project = new Project({
@@ -109,11 +110,15 @@ export default function resolvePaths(root: string, options: Options = {}): Promi
         const resolvedFilePath = resolvedImports.get(moduleName);
 
         if (resolvedFilePath) {
+          changed.add(sourceFilePath);
+
           importLiteral.setLiteralValue(getRelativeModulePath(resolvedFilePath, sourceFile));
         }
       }
     }
   }
 
-  return project.save();
+  await project.save();
+
+  return changed;
 }
