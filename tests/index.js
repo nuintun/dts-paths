@@ -4,6 +4,8 @@
 
 import resolvePaths from 'dts-paths';
 
-resolvePaths('tests/types', {
+const changed = await resolvePaths('tests/types', {
   tsConfigFilePath: 'tests/tsconfig.json'
 });
+
+console.log(changed);
