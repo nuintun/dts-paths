@@ -4,6 +4,6 @@
 
 import resolvePaths from 'dts-paths';
 
-resolvePaths('tests', {
+resolvePaths('tests/types', {
   tsConfigFilePath: 'tests/tsconfig.json'
 });
