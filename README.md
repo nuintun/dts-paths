@@ -19,4 +19,4 @@
 [side-effect-image]: https://img.shields.io/badge/side--effect-free-brightgreen?style=flat-square
 [bundle-phobia-url]: https://bundlephobia.com/result?p=dts-paths
 [license-image]: https://img.shields.io/github/license/nuintun/dts-paths?style=flat-square
-[license-url]: https://github.com/nuintun/dts-paths/blob/master/LICENSE
+[license-url]: https://github.com/nuintun/dts-paths/blob/main/LICENSE
