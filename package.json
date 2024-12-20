@@ -1,6 +1,6 @@
 {
   "name": "dts-paths",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Replace alias paths with relative paths after typescript compilation.",
   "type": "module",
   "sideEffects": false,
@@ -21,7 +21,14 @@
     "url": "git+https://github.com/nuintun/dts-paths.git"
   },
   "keywords": [
-    "dts"
+    "dts",
+    "tsc",
+    "alias",
+    "paths",
+    "typescript",
+    "compilation",
+    "absolute path",
+    "relative path"
   ],
   "author": {
     "name": "nuintun",
