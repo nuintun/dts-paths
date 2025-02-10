@@ -145,6 +145,8 @@ export async function resolvePaths(
     }
   });
 
+  exclude = exclude.map(pattern => `!${pattern}`);
+
   const include = resolve(root, '**/*.{ts,cts,mts,tsx,ctsx,mtsx}');
   const sourceFiles = project.addSourceFilesAtPaths([include, ...exclude]);
 
