@@ -59,10 +59,10 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/node": "^24.3.0",
-    "magic-string": "^0.30.17",
+    "magic-string": "^0.30.18",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
-    "rollup": "^4.46.4",
+    "rollup": "^4.48.0",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
