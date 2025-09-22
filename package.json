@@ -58,10 +58,10 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.4",
-    "@types/node": "^24.5.1",
+    "@types/node": "^24.5.2",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
-    "rollup": "^4.50.2",
+    "rollup": "^4.52.0",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
