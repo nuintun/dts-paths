@@ -4,6 +4,7 @@
 import { FNC1 } from '/common/interface';
 import { FormatInfo } from './FormatInfo';
 import { Version } from '/common/Version';
+import { Level } from '/common/ECLevel';
 import { DecodeSource, Structured } from './utils/source';
 export declare class Decoded {
   #private;
@@ -17,7 +18,7 @@ export declare class Decoded {
    * @property level
    * @description Get the error correction level of qrcode.
    */
-  get level(): string;
+  get level(): `${Level}`;
   /**
    * @property version
    * @description Get the version of qrcode.

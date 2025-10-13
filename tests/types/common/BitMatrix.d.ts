@@ -5,11 +5,15 @@ export declare class BitMatrix {
   #private;
   /**
    * @constructor
+   * @param size The size of the square matrix.
+   */
+  constructor(size: number);
+  /**
+   * @constructor
    * @param width The width of the matrix.
    * @param height The height of the matrix.
-   * @param bits The initial bits of the matrix.
    */
-  constructor(width: number, height: number, bits?: Int32Array);
+  constructor(width: number, height: number);
   /**
    * @property width
    * @description The width of the matrix.
@@ -22,7 +26,7 @@ export declare class BitMatrix {
   get height(): number;
   /**
    * @method set
-   * @description Set the bit value of the specified coordinate.
+   * @description Set the bit value to 1 of the specified coordinate.
    * @param x The x coordinate.
    * @param y The y coordinate.
    */
@@ -33,7 +37,7 @@ export declare class BitMatrix {
    * @param x The x coordinate.
    * @param y The y coordinate.
    */
-  get(x: number, y: number): number;
+  get(x: number, y: number): 0 | 1;
   /**
    * @method flip
    * @description Flip the bit value of the specified coordinate.
@@ -53,7 +57,7 @@ export declare class BitMatrix {
   clone(): BitMatrix;
   /**
    * @method setRegion
-   * @description Set the bit value of the specified region.
+   * @description Set the bit value to 1 of the specified region.
    * @param left The left coordinate.
    * @param top The top coordinate.
    * @param width The width to set.

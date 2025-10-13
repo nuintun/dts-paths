@@ -1,9 +1,9 @@
 /**
  * @module Encoded
  */
-import { ECLevel } from '/common/ECLevel';
 import { Version } from '/common/Version';
 import { ByteMatrix } from '/common/ByteMatrix';
+import { ECLevel, Level } from '/common/ECLevel';
 import { Colors } from '/common/image/GIFImage';
 export declare class Encoded {
   #private;
@@ -22,7 +22,7 @@ export declare class Encoded {
    * @property level
    * @description Get the error correction level of qrcode.
    */
-  get level(): string;
+  get level(): `${Level}`;
   /**
    * @property version
    * @description Get the version of qrcode.
@@ -32,7 +32,7 @@ export declare class Encoded {
    * @method get
    * @description Get the bit value of the specified coordinate of qrcode.
    */
-  get(x: number, y: number): number;
+  get(x: number, y: number): 0 | 1;
   /**
    * @method toDataURL
    * @param moduleSize The size of one qrcode module

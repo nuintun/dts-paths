@@ -7,10 +7,10 @@ export declare class BitArray {
   get length(): number;
   get byteLength(): number;
   set(index: number): void;
-  get(index: number): number;
+  get(index: number): 0 | 1;
   xor(mask: BitArray): void;
   append(array: BitArray): void;
   append(value: number, length?: number): void;
-  toUint8Array(bitOffset: number, array: Uint8Array, offset: number, byteLength: number): void;
+  copyTo(bitOffset: number, target: Uint8Array, byteOffset: number, byteLength: number): void;
   clear(): void;
 }

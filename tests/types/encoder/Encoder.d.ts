@@ -3,6 +3,7 @@
  */
 import { Hints, Segment } from './utils/encoder';
 import { Encoded } from './Encoded';
+import { Level } from '/common/ECLevel';
 import { TextEncode } from '/common/encoding';
 export interface Options {
   /**
@@ -10,6 +11,11 @@ export interface Options {
    * @description Encode hints.
    */
   hints?: Hints;
+  /**
+   * @property level
+   * @description Error correction level.
+   */
+  level?: `${Level}`;
   /**
    * @property encode
    * @description Text encode function.
@@ -20,11 +26,6 @@ export interface Options {
    * @description Error correction level.
    */
   version?: 'Auto' | number;
-  /**
-   * @property level
-   * @description Error correction level.
-   */
-  level?: 'L' | 'M' | 'Q' | 'H';
 }
 export declare class Encoder {
   #private;
