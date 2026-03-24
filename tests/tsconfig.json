@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "pretty": true,
     "strict": true,
     "newLine": "lf",
-    "module": "ESNext",
-    "target": "ESNext",
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "target": "esnext",
+    "rootDir": "./types",
     "skipLibCheck": true,
     "importHelpers": true,
     "noUnusedLocals": true,
@@ -16,12 +17,12 @@
     "moduleResolution": "bundler",
     "paths": {
       "/*": [
-        "types/*"
+        "./types/*"
       ]
     }
   },
   "include": [
-    "types/**/*"
+    "./types/**/*"
   ],
   "exclude": [
     "node_modules"

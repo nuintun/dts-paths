@@ -2,181 +2,163 @@
  * @module index
  */
 
-import { resolve } from 'node:path';
-import { Project, ProjectOptions, SourceFile, ts } from 'ts-morph';
+import ts from 'typescript';
+import { scanFiles } from './fs';
+import MagicString from 'magic-string';
+import { dirname, relative, resolve } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
+
+export interface Options {
+  tsconfig?: string;
+  exclude?(path: string): boolean;
+}
+
+const EXTENSION_MAP: Record<string, string> = {
+  ts: '.js',
+  tsx: '.js',
+  js: '.js',
+  jsx: '.js',
+  cts: '.cjs',
+  cjs: '.cjs',
+  mts: '.mjs',
+  mjs: '.mjs'
+};
 
 const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
-function resolveModuleName(
-  moduleName: string,
-  containingFile: string,
-  extensions: `.${string}`[],
-  compilerOptions: ts.CompilerOptions,
-  moduleResolutionHost: ts.ModuleResolutionHost
-): ts.ResolvedModule | undefined {
-  for (const extension of extensions) {
-    for (const suffix of [extension, `/index${extension}`]) {
-      const { resolvedModule } = ts.resolveModuleName(
-        // Module name.
-        `${moduleName}${suffix}`,
-        // Containing file.
-        containingFile,
-        // Compiler options.
-        compilerOptions,
-        // Module resolution host.
-        moduleResolutionHost
-      );
+function toRelative(from: string, to: string) {
+  let path = relative(dirname(from), to);
 
-      if (resolvedModule) {
-        return resolvedModule;
+  path = path.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
+    const ext = (tsExt || jsExt)?.toLowerCase();
+
+    return ext ? EXTENSION_MAP[ext] || match : match;
+  });
+
+  if (!path.startsWith('.')) {
+    path = `./${path}`;
+  }
+
+  return path.replace(/\\/g, '/');
+}
+
+function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
+  const configFile = ts.readConfigFile(tsconfig, ts.sys.readFile);
+
+  if (configFile.error) {
+    throw new Error(
+      ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+        getNewLine: () => '\n',
+        getCanonicalFileName: name => name,
+        getCurrentDirectory: ts.sys.getCurrentDirectory
+      })
+    );
+  }
+
+  return ts.parseJsonConfigFileContent(configFile.config, ts.sys, dirname(tsconfig)).options;
+}
+
+function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts.CompilerOptions) {
+  const cache = new Map<string, ts.ResolvedModule | undefined>();
+
+  return function resolveModule(moduleName: string, containingFile: string) {
+    const key = `${containingFile}::${moduleName}`;
+
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    const resolved = ts.resolveModuleName(
+      moduleName,
+      containingFile,
+      compilerOptions,
+      host
+    ).resolvedModule;
+
+    cache.set(key, resolved);
+
+    return resolved;
+  };
+}
+
+function transformFile(
+  path: string,
+  content: string,
+  resolveModule: ReturnType<typeof createModuleResolver>
+) {
+  const source = new MagicString(content);
+  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
+
+  function updateSpecifier(specifier: ts.StringLiteral) {
+    const moduleName = specifier.text;
+    const resolved = resolveModule(moduleName, path);
+
+    if (resolved && !resolved.isExternalLibraryImport) {
+      const resolvedModuleName = toRelative(path, resolved.resolvedFileName);
+
+      if (resolvedModuleName !== moduleName) {
+        source.overwrite(
+          specifier.getStart(sourceFile) + 1,
+          specifier.getEnd() - 1,
+          resolvedModuleName
+        );
       }
     }
   }
 
-  const { resolvedModule } = ts.resolveModuleName(
-    // Module name.
-    moduleName,
-    // Containing file.
-    containingFile,
-    // Compiler options.
-    compilerOptions,
-    // Module resolution host.
-    moduleResolutionHost
-  );
+  function visit(node: ts.Node) {
+    let specifier: ts.StringLiteral | undefined;
 
-  return resolvedModule;
-}
-
-type TsMorphConfigKeys = 'tsConfigFilePath' | 'compilerOptions';
-
-export interface Options extends Pick<ProjectOptions, TsMorphConfigKeys> {
-  exclude?: string[];
-  extensions?: `.${string}`[];
-}
-
-function getRelativeModulePath(resolvedFilePath: string, sourceFile: SourceFile): string {
-  const relativePath = sourceFile.getRelativePathTo(resolvedFilePath);
-  const modulePath = relativePath.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
-    const fileExt = tsExt || jsExt;
-
-    if (fileExt) {
-      switch (fileExt.toLowerCase()) {
-        case 'js':
-        case 'ts':
-        case 'jsx':
-        case 'tsx':
-          return '.js';
-        case 'cjs':
-        case 'cts':
-        case 'cjsx':
-        case 'ctsx':
-          return '.cjs';
-        case 'mjs':
-        case 'mts':
-        case 'mjsx':
-        case 'mtsx':
-          return '.mjs';
-        default:
-          return match;
-      }
+    if (ts.isImportDeclaration(node)) {
+      specifier = node.moduleSpecifier as ts.StringLiteral;
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+      specifier = node.moduleSpecifier as ts.StringLiteral;
+    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      specifier = node.argument.literal as ts.StringLiteral;
     }
 
-    return match;
-  });
+    if (specifier && ts.isStringLiteral(specifier)) {
+      updateSpecifier(specifier);
+    }
 
-  return modulePath.startsWith('.') ? modulePath : `./${modulePath}`;
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+
+  return source;
 }
 
-/**
- * @function resolvePaths
- * @description Resolve dts import paths.
- * @param root The root directory of dts.
- * @param options The options of resolve.
- * @return {Promise<Set<string>>}
- */
+async function rewriteSpecifiersInFile(
+  path: string,
+  resolveModule: ReturnType<typeof createModuleResolver>
+) {
+  const content = await readFile(path, 'utf8');
+  const source = transformFile(path, content, resolveModule);
+
+  if (source.hasChanged()) {
+    await writeFile(path, source.toString());
+
+    return true;
+  }
+
+  return false;
+}
+
 export async function resolvePaths(
   root: string,
-  {
-    compilerOptions,
-    exclude = ['node_modules'],
-    tsConfigFilePath = 'tsconfig.json',
-    extensions = ['.ts', '.cts', '.mts', '.d.ts', '.d.cts', '.d.mts']
-  }: Options = {}
+  { tsconfig = 'tsconfig.json', exclude = () => false }: Options = {}
 ): Promise<Set<string>> {
   const changed = new Set<string>();
-  const moduleResolution = new Map<string, Map<string, string>>();
+  const compilerOptions = getCompilerOptions(resolve(tsconfig));
+  const resolveModule = createModuleResolver(ts.sys, compilerOptions);
+  const files = scanFiles(root, path => path.endsWith('.d.ts') && !exclude(path));
 
-  const project = new Project({
-    compilerOptions,
-    skipAddingFilesFromTsConfig: true,
-    skipFileDependencyResolution: true,
-    tsConfigFilePath: resolve(tsConfigFilePath),
-    resolutionHost(moduleResolutionHost, getCompilerOptions) {
-      const compilerOptions = getCompilerOptions();
-
-      return {
-        resolveModuleNames(moduleNames, containingFile) {
-          const resolvedModules: (ts.ResolvedModule | undefined)[] = [];
-          const resolvedImports = moduleResolution.get(containingFile) || new Map<string, string>();
-
-          if (!moduleResolution.has(containingFile)) {
-            moduleResolution.set(containingFile, resolvedImports);
-          }
-
-          for (const moduleName of moduleNames) {
-            const resolvedModule = resolveModuleName(
-              moduleName,
-              containingFile,
-              extensions,
-              compilerOptions,
-              moduleResolutionHost
-            );
-
-            resolvedModules.push(resolvedModule);
-
-            if (resolvedModule && !resolvedModule.isExternalLibraryImport) {
-              resolvedImports.set(moduleName, resolvedModule.resolvedFileName);
-            }
-          }
-
-          return resolvedModules;
-        }
-      };
-    }
-  });
-
-  exclude = exclude.map(pattern => `!${pattern}`);
-
-  const include = resolve(root, '**/*.{ts,cts,mts,tsx,ctsx,mtsx}');
-  const sourceFiles = project.addSourceFilesAtPaths([include, ...exclude]);
-
-  project.resolveSourceFileDependencies();
-
-  for (const sourceFile of sourceFiles) {
-    const sourceFilePath = sourceFile.getFilePath();
-    const resolvedImports = moduleResolution.get(sourceFilePath);
-
-    if (resolvedImports) {
-      const importLiterals = sourceFile.getImportStringLiterals();
-
-      for (const importLiteral of importLiterals) {
-        const moduleName = importLiteral.getLiteralValue();
-        const resolvedFilePath = resolvedImports.get(moduleName);
-
-        if (resolvedFilePath) {
-          const relativeModulePath = getRelativeModulePath(resolvedFilePath, sourceFile);
-
-          if (relativeModulePath !== moduleName) {
-            changed.add(sourceFilePath);
-
-            importLiteral.setLiteralValue(relativeModulePath);
-          }
-        }
-      }
+  for await (const file of files) {
+    if (await rewriteSpecifiersInFile(file, resolveModule)) {
+      changed.add(file);
     }
   }
-
-  await project.save();
 
   return changed;
 }
