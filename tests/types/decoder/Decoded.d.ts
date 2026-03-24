@@ -8,7 +8,13 @@ import { Level } from '/common/ECLevel';
 import { DecodeSource, Structured } from './utils/source';
 export declare class Decoded {
   #private;
-  constructor(metadata: DecodeSource, version: Version, { mask, level }: FormatInfo, corrected: number, mirror: boolean);
+  constructor(
+    metadata: DecodeSource,
+    version: Version,
+    { mask, level }: FormatInfo,
+    corrected: number,
+    mirror: boolean
+  );
   /**
    * @property mask
    * @description Get the mask of qrcode.

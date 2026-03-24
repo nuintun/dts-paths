@@ -17,4 +17,8 @@ export declare class FinderPatternGroup {
   get topRight(): Pattern;
   get bottomLeft(): Pattern;
 }
-export declare function calculateTopLeftAngle({ topLeft, topRight, bottomLeft }: FinderPatternGroup): number;
+export declare function calculateTopLeftAngle({
+  topLeft,
+  topRight,
+  bottomLeft
+}: FinderPatternGroup): number;

@@ -12,8 +12,22 @@ export declare class Pattern extends Point {
   static combined(pattern: Pattern): number;
   static rect(pattern: Pattern): PatternRect;
   static equals(pattern: Pattern, x: number, y: number, width: number, height: number): boolean;
-  static combine(pattern: Pattern, x: number, y: number, width: number, height: number, noise: number): Pattern;
-  constructor(ratios: PatternRatios, x: number, y: number, width: number, height: number, noise: number);
+  static combine(
+    pattern: Pattern,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    noise: number
+  ): Pattern;
+  constructor(
+    ratios: PatternRatios,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    noise: number
+  );
   get moduleSize(): number;
 }
 export {};

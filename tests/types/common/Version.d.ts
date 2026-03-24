@@ -17,4 +17,8 @@ export declare class Version {
 }
 export declare const VERSIONS: Version[];
 export declare function decodeVersion(version1: number, version2: number): Version;
-export declare function buildFunctionPattern({ size, version, alignmentPatterns }: Version): BitMatrix;
+export declare function buildFunctionPattern({
+  size,
+  version,
+  alignmentPatterns
+}: Version): BitMatrix;

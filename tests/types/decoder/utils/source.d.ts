@@ -16,4 +16,8 @@ export interface DecodeSource {
   readonly codewords: Uint8Array;
   readonly structured: Structured | false;
 }
-export declare function decode(codewords: Uint8Array, version: Version, decode: TextDecode): DecodeSource;
+export declare function decode(
+  codewords: Uint8Array,
+  version: Version,
+  decode: TextDecode
+): DecodeSource;

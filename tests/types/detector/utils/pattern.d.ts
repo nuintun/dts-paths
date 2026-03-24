@@ -18,5 +18,11 @@ export declare function alignCrossPattern(
   isVertical?: boolean
 ): [center: number, scanline: number[]];
 export declare function isEqualsSize(size1: number, size2: number, ratio: number): boolean;
-export declare function isMatchPattern(scanline: number[], { ratios, modules }: PatternRatios): boolean;
-export declare function calculatePatternNoise(ratios: PatternRatios, ...scanlines: number[][]): number;
+export declare function isMatchPattern(
+  scanline: number[],
+  { ratios, modules }: PatternRatios
+): boolean;
+export declare function calculatePatternNoise(
+  ratios: PatternRatios,
+  ...scanlines: number[][]
+): number;
