@@ -8,11 +8,28 @@ import MagicString from 'magic-string';
 import { dirname, relative, resolve } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 
+/**
+ * @interface Options
+ * @description Configuration options for path resolution
+ */
 export interface Options {
+  /**
+   * @description Path to TypeScript configuration file
+   * @default 'tsconfig.json'
+   */
   tsconfig?: string;
+  /**
+   * @description Function to exclude specific paths from processing
+   * @param path File path to check
+   * @returns true if the path should be excluded, false otherwise
+   */
   exclude?(path: string): boolean;
 }
 
+/**
+ * @constant EXTENSION_MAP
+ * @description Maps TypeScript/JavaScript file extensions to their compiled output extensions
+ */
 const EXTENSION_MAP: Record<string, string> = {
   ts: '.js',
   tsx: '.js',
@@ -24,8 +41,19 @@ const EXTENSION_MAP: Record<string, string> = {
   mjs: '.mjs'
 };
 
+/**
+ * @constant EXT_RE
+ * @description Regular expression to match TypeScript/JavaScript file extensions including declaration files
+ */
 const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
 
+/**
+ * @function toRelative
+ * @description Converts an absolute path to a relative import path with proper extension mapping
+ * @param from The source file path
+ * @param to The target file path
+ * @returns Relative path with normalized separators and mapped extensions
+ */
 function toRelative(from: string, to: string) {
   let path = relative(dirname(from), to);
 
@@ -42,6 +70,13 @@ function toRelative(from: string, to: string) {
   return path.replace(/\\/g, '/');
 }
 
+/**
+ * @function getCompilerOptions
+ * @description Reads and parses TypeScript compiler options from a tsconfig file
+ * @param tsconfig Path to the tsconfig.json file
+ * @returns Parsed TypeScript compiler options
+ * @throws Error if the config file cannot be read or parsed
+ */
 function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
   const configFile = ts.readConfigFile(tsconfig, ts.sys.readFile);
 
@@ -58,6 +93,13 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
   return ts.parseJsonConfigFileContent(configFile.config, ts.sys, dirname(tsconfig)).options;
 }
 
+/**
+ * @function createModuleResolver
+ * @description Creates a module resolution function with caching for improved performance
+ * @param host TypeScript module resolution host
+ * @param compilerOptions TypeScript compiler options
+ * @returns A function that resolves module names to their file paths with caching
+ */
 function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts.CompilerOptions) {
   const cache = new Map<string, ts.ResolvedModule | undefined>();
 
@@ -81,6 +123,14 @@ function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts
   };
 }
 
+/**
+ * @function transformFile
+ * @description Transforms a file's content by updating import/export specifiers to resolved paths
+ * @param path The file path to transform
+ * @param content The original file content
+ * @param resolveModule Module resolution function
+ * @returns A MagicString instance with transformed specifiers
+ */
 function transformFile(
   path: string,
   content: string,
@@ -129,6 +179,13 @@ function transformFile(
   return source;
 }
 
+/**
+ * @function rewriteSpecifiersInFile
+ * @description Asynchronously rewrites import/export specifiers in a file and saves changes
+ * @param path The file path to process
+ * @param resolveModule Module resolution function
+ * @returns true if the file was modified, false otherwise
+ */
 async function rewriteSpecifiersInFile(
   path: string,
   resolveModule: ReturnType<typeof createModuleResolver>
@@ -145,6 +202,13 @@ async function rewriteSpecifiersInFile(
   return false;
 }
 
+/**
+ * @function resolvePaths
+ * @description Resolves and updates module paths in TypeScript declaration files
+ * @param root Root directory to scan for .d.ts files
+ * @param options Configuration options including tsconfig path and exclude function
+ * @returns A Set of file paths that were modified
+ */
 export async function resolvePaths(
   root: string,
   { tsconfig = 'tsconfig.json', exclude = () => false }: Options = {}
