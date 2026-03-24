@@ -55,18 +55,22 @@ const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
  * @returns Relative path with normalized separators and mapped extensions
  */
 function toRelative(from: string, to: string) {
+  // Get relative path from source file directory to target file
   let path = relative(dirname(from), to);
 
+  // Replace TypeScript/JavaScript extensions with their compiled equivalents
   path = path.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
     const ext = (tsExt || jsExt)?.toLowerCase();
 
     return ext ? EXTENSION_MAP[ext] || match : match;
   });
 
+  // Ensure relative paths start with './'
   if (!path.startsWith('.')) {
     path = `./${path}`;
   }
 
+  // Normalize path separators to forward slashes
   return path.replace(/\\/g, '/');
 }
 
@@ -78,8 +82,10 @@ function toRelative(from: string, to: string) {
  * @throws Error if the config file cannot be read or parsed
  */
 function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
+  // Read and parse tsconfig.json file
   const configFile = ts.readConfigFile(tsconfig, ts.sys.readFile);
 
+  // Throw error if config file cannot be read
   if (configFile.error) {
     throw new Error(
       ts.formatDiagnosticsWithColorAndContext([configFile.error], {
@@ -90,6 +96,7 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
     );
   }
 
+  // Parse config file content and extract compiler options
   return ts.parseJsonConfigFileContent(configFile.config, ts.sys, dirname(tsconfig)).options;
 }
 
@@ -101,15 +108,20 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
  * @returns A function that resolves module names to their file paths with caching
  */
 function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts.CompilerOptions) {
+  // Create cache to store resolved modules and avoid repeated resolution
   const cache = new Map<string, ts.ResolvedModule | undefined>();
 
+  // Return resolver function with closure over the cache
   return function resolveModule(moduleName: string, containingFile: string) {
+    // Create unique cache key from file and module name
     const key = `${containingFile}::${moduleName}`;
 
+    // Return cached result if available
     if (cache.has(key)) {
       return cache.get(key);
     }
 
+    // Resolve module using TypeScript's module resolution
     const resolved = ts.resolveModuleName(
       moduleName,
       containingFile,
@@ -117,6 +129,7 @@ function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts
       host
     ).resolvedModule;
 
+    // Cache the resolved module for future lookups
     cache.set(key, resolved);
 
     return resolved;
@@ -136,16 +149,24 @@ function transformFile(
   content: string,
   resolveModule: ReturnType<typeof createModuleResolver>
 ) {
+  // Create MagicString instance for efficient source code manipulation
   const source = new MagicString(content);
+  // Parse source file into AST
   const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
 
+  /**
+   * Updates a module specifier to its resolved relative path
+   */
   function updateSpecifier(specifier: ts.StringLiteral) {
     const moduleName = specifier.text;
+    // Resolve the module name to its actual file path
     const resolved = resolveModule(moduleName, path);
 
+    // Only update if resolved and not an external library import
     if (resolved && !resolved.isExternalLibraryImport) {
       const resolvedModuleName = toRelative(path, resolved.resolvedFileName);
 
+      // Replace the specifier text if the resolved path is different
       if (resolvedModuleName !== moduleName) {
         source.overwrite(
           specifier.getStart(sourceFile) + 1,
@@ -156,24 +177,35 @@ function transformFile(
     }
   }
 
+  /**
+   * Recursively visits AST nodes to find module specifiers
+   */
   function visit(node: ts.Node) {
     let specifier: ts.StringLiteral | undefined;
 
+    // Handle import declarations: import ... from 'module'
     if (ts.isImportDeclaration(node)) {
       specifier = node.moduleSpecifier as ts.StringLiteral;
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+    }
+    // Handle export declarations: export ... from 'module'
+    else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
       specifier = node.moduleSpecifier as ts.StringLiteral;
-    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+    }
+    // Handle import type nodes: import('type').Type
+    else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
       specifier = node.argument.literal as ts.StringLiteral;
     }
 
+    // Update the specifier if found and is a string literal
     if (specifier && ts.isStringLiteral(specifier)) {
       updateSpecifier(specifier);
     }
 
+    // Continue traversing child nodes
     ts.forEachChild(node, visit);
   }
 
+  // Start AST traversal from the root
   visit(sourceFile);
 
   return source;
@@ -190,9 +222,12 @@ async function rewriteSpecifiersInFile(
   path: string,
   resolveModule: ReturnType<typeof createModuleResolver>
 ) {
+  // Read file content
   const content = await readFile(path, 'utf8');
+  // Transform the file content
   const source = transformFile(path, content, resolveModule);
 
+  // Write back only if changes were made
   if (source.hasChanged()) {
     await writeFile(path, source.toString());
 
@@ -204,7 +239,7 @@ async function rewriteSpecifiersInFile(
 
 /**
  * @function resolvePaths
- * @description Resolves and updates module paths in TypeScript declaration files
+ * @description Main entry point - resolves and updates module paths in TypeScript declaration files
  * @param root Root directory to scan for .d.ts files
  * @param options Configuration options including tsconfig path and exclude function
  * @returns A Set of file paths that were modified
@@ -213,12 +248,21 @@ export async function resolvePaths(
   root: string,
   { tsconfig = 'tsconfig.json', exclude = () => false }: Options = {}
 ): Promise<Set<string>> {
+  // Track changed files
   const changed = new Set<string>();
+
+  // Load TypeScript compiler options from tsconfig
   const compilerOptions = getCompilerOptions(resolve(tsconfig));
+
+  // Create module resolver with caching
   const resolveModule = createModuleResolver(ts.sys, compilerOptions);
+
+  // Scan for .d.ts files, applying exclude filter
   const files = scanFiles(root, path => path.endsWith('.d.ts') && !exclude(path));
 
+  // Process each file asynchronously
   for await (const file of files) {
+    // Rewrite specifiers and track if file was modified
     if (await rewriteSpecifiersInFile(file, resolveModule)) {
       changed.add(file);
     }

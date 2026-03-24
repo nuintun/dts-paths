@@ -25,10 +25,12 @@ interface Filter {
  * @returns Async iterator of directory entries
  */
 async function read(path: string) {
+  // Read directory entries with file type information
   const entries = await readdir(path, {
     withFileTypes: true
   });
 
+  // Return iterator over entries
   return entries.values();
 }
 
@@ -49,28 +51,37 @@ export async function* scanFiles(
   root: string,
   filter: Filter = () => true
 ): AsyncGenerator<string> {
+  // Resolve root to absolute path
   root = resolve(root);
 
+  // Stack of directories waiting to be processed
   const waiting: Waiting[] = [];
 
+  // Start with root directory - empty prefix and root iterator
   let current: Waiting | undefined = ['', await read(root)];
 
+  // Process directories iteratively (avoiding recursion depth limits)
   while (current) {
     const [, iterator] = current;
     const item = iterator.next();
 
     if (item.done) {
+      // Current directory exhausted, move to next waiting directory
       current = waiting.pop();
     } else {
       const [dirname] = current;
       const { value: stat } = item;
       const path = `${dirname}${stat.name}`;
 
+      // Yield file paths that pass the filter
       if (stat.isFile() && filter(path)) {
         yield join(root, path);
-      } else if (stat.isDirectory()) {
+      }
+      // Queue subdirectories for processing
+      else if (stat.isDirectory()) {
         const realpath = join(root, path);
 
+        // Add to waiting stack with updated path prefix
         waiting.push([`${path}/`, await read(realpath)]);
       }
     }
