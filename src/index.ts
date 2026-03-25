@@ -103,6 +103,8 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
 /**
  * @function createModuleResolver
  * @description Creates a module resolution function with caching for improved performance
+ * @param host TypeScript system interface for file operations
+ * @param compilerOptions TypeScript compiler options for module resolution
  * @returns A function that resolves module names to their file paths with caching
  */
 function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions) {
@@ -146,7 +148,9 @@ function transformFile(
   const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
 
   /**
-   * Updates a module specifier to its resolved relative path
+   * @function updateSpecifier
+   * @description Updates a module specifier to its resolved relative path
+   * @param specifier The string literal node representing the module specifier
    */
   function updateSpecifier(specifier: ts.StringLiteral) {
     const moduleName = specifier.text;
@@ -169,7 +173,9 @@ function transformFile(
   }
 
   /**
-   * Recursively visits AST nodes to find module specifiers
+   * @function visit
+   * @description Recursively visits AST nodes to find module specifiers
+   * @param node The AST node to visit
    */
   function visit(node: ts.Node) {
     let specifier: ts.Node | undefined;

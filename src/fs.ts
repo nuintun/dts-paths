@@ -22,7 +22,7 @@ interface Filter {
  * @function read
  * @description Reads directory entries with file metadata
  * @param path Directory path to read
- * @returns Async iterator of directory entries
+ * @returns AsyncIterator<Dirent> Async iterator of directory entries
  */
 async function read(path: string) {
   // Read directory entries with file type information
