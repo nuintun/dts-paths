@@ -341,7 +341,7 @@ export async function resolvePaths(
   const compilerOptions = getCompilerOptions(resolve(tsconfig));
   // Create module resolver with caching
   const resolveModule = createModuleResolver(ts.sys, compilerOptions);
-  // Scan for .d.ts files, applying exclude filter
+  // Scan TypeScript-related files.
   const files = scanFiles(root, path => /\.([cm]?ts)/i.test(path) && !exclude(path));
 
   // Process each file asynchronously
@@ -376,6 +376,11 @@ export async function resolvePaths(
 
       if (importer !== path) {
         await rename(importer, path);
+
+        // Remove old importer path.
+        changed.delete(importer);
+        // Add renamed path as changed.
+        changed.add(path);
       }
     })
   );
