@@ -238,12 +238,8 @@ function transformFile(
     // Resolve the module name to its actual file path
     const resolved = resolveModule(moduleName, path);
 
-    if (!resolved) {
-      throw new Error(`could not resolve module '${moduleName}' from '${path}'`);
-    }
-
     // Only update if resolved and not an external library import
-    if (!resolved.isExternalLibraryImport) {
+    if (resolved && !resolved.isExternalLibraryImport) {
       const resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
 
       // Replace the specifier text if the resolved path is different
