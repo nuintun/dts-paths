@@ -10,28 +10,31 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 
 /**
  * @interface MapExtensionContext
- * @description Context object for mapping file extensions
+ * @description Context object for mapping file extensions during module resolution
  */
 export interface MapExtensionContext {
   /**
+   * @property {string} path
    * @description The resolved file path being processed
    */
   path: string;
   /**
-   * @description The file extension to map
+   * @property {string} extname
+   * @description The file extension to map (e.g., '.ts', '.tsx')
    */
   extname: string;
   /**
-   * @description Optional importer file path
+   * @property {string} [importer]
+   * @description Optional importer file path that references this module
    */
   importer?: string;
 }
 
 /**
  * @function MapExtension
- * @description Function type for mapping file extensions
- * @param context The map extension context
- * @returns The mapped file extension
+ * @description Function type for mapping file extensions during module resolution
+ * @param {MapExtensionContext} context The map extension context containing file information
+ * @returns {string} The mapped file extension (e.g., '.ts' -> '.js')
  */
 export interface MapExtension {
   (context: MapExtensionContext): string;
@@ -43,26 +46,36 @@ export interface MapExtension {
  */
 export interface Options {
   /**
-   * @description Function to exclude specific paths from processing
-   * @param path File path to check
-   * @returns true if the path should be excluded, false otherwise
+   * @property {Filter} [exclude]
+   * @description Filter function used to exclude specific file paths from being processed
+   * @param {string} path File path to check for exclusion
+   * @returns {boolean} true if the path should be excluded, false otherwise
    */
   exclude?: Filter;
   /**
-   * @description Path to TypeScript configuration file
+   * @property {string} [tsconfig='tsconfig.json']
+   * @description Configuration file path for TypeScript compiler options
    * @default 'tsconfig.json'
    */
   tsconfig?: string;
   /**
-   * @description Function to map file extensions during path resolution
+   * @property {MapExtension} [mapExtension]
+   * @description Function that maps TypeScript/JavaScript file extensions to their compiled output extensions
    */
   mapExtension?: MapExtension;
 }
 
+/**
+ * @typedef {Function} ResolveModule
+ * @description Module resolution function type definition with caching
+ * @param {string} moduleName The module name to resolve (e.g., './utils/helper')
+ * @param {string} containingFile The file path containing the module reference
+ * @returns {ts.ResolvedModule | undefined} Resolved module information, or undefined if resolution fails
+ */
 type ResolveModule = ReturnType<typeof createModuleResolver>;
 
 /**
- * @constant EXTENSION_MAP
+ * @constant {Object<string, string>} EXTENSION_MAP
  * @description Maps TypeScript/JavaScript file extensions to their compiled output extensions
  */
 const EXTENSION_MAP: Record<string, string> = {
@@ -73,23 +86,31 @@ const EXTENSION_MAP: Record<string, string> = {
   '.mts': '.mjs'
 };
 
-const IMPORTER_EXT_RE = /\.[cm]?ts/i;
+/**
+ * @constant {RegExp} IMPORTER_EXT_RE
+ * @description Regular expression matching TypeScript source file extensions (.ts, .cts, .mts)
+ */
+const IMPORTER_EXT_RE = /\.[cm]?ts$/i;
 
 /**
- * @constant MODULE_EXT_RE
- * @description Regular expression to match TypeScript/JavaScript file extensions including declaration files
+ * @constant {RegExp} MODULE_EXT_RE
+ * @description Regular expression matching TypeScript/JavaScript file extensions including declaration files
  */
 const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 
 /**
- * @constant DEFAULT_EXCLUDE
- * @description Default filter function that excludes no files (includes all)
+ * @constant {Filter} DEFAULT_EXCLUDE
+ * @description Default filter function that excludes no files (includes all files)
  */
 const DEFAULT_EXCLUDE: Filter = () => false;
 
 /**
- * @constant DEFAULT_MAP_EXTENSION
+ * @constant {MapExtension} DEFAULT_MAP_EXTENSION
  * @description Default extension mapping function that maps TypeScript extensions to JavaScript
+ * @param {MapExtensionContext} context Mapping context containing file information
+ * @param {string} context.extname Original file extension
+ * @param {string} [context.importer] Importer file path (if resolving an import statement)
+ * @returns {string} Mapped extension (e.g., '.ts' becomes '.js', or unchanged if no importer)
  */
 const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   if (importer) {
@@ -102,10 +123,10 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
 /**
  * @function toRelative
  * @description Converts an absolute path to a relative import path with proper extension mapping
- * @param from The source file path
- * @param to The target file path to resolve
- * @param mapExtension Function to map file extensions
- * @returns Relative path with normalized separators and mapped extensions
+ * @param {string} from Source file path (the file containing the import statement)
+ * @param {string} to Target file path (the file being imported)
+ * @param {MapExtension} mapExtension Function to map file extensions
+ * @returns {string} Relative import path from source to target with normalized separators and mapped extensions
  */
 function toRelative(from: string, to: string, mapExtension: MapExtension) {
   // Get relative path from source file directory to target file
@@ -121,16 +142,16 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
     path = `./${path}`;
   }
 
-  // Normalize path separators to forward slashes
+  // Normalize path separators to forward slashes (cross-platform compatibility)
   return path.replace(/\\/g, '/');
 }
 
 /**
  * @function getCompilerOptions
  * @description Reads and parses TypeScript compiler options from a tsconfig file
- * @param tsconfig Path to the tsconfig.json file
- * @returns Parsed TypeScript compiler options
- * @throws Error if the config file cannot be read or parsed
+ * @param {string} tsconfig Path to the tsconfig.json file
+ * @returns {ts.CompilerOptions} Parsed TypeScript compiler options
+ * @throws {Error} Throws error if the config file cannot be read or parsed
  */
 function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
   // Read and parse tsconfig.json file
@@ -154,11 +175,12 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
 /**
  * @function createModuleResolver
  * @description Creates a module resolution function with caching for improved performance
- * @param host TypeScript system interface for file operations
- * @param compilerOptions TypeScript compiler options for module resolution
- * @returns A function that resolves module names to their file paths with caching
+ * @param {ts.System} host TypeScript system interface providing file system operation capabilities
+ * @param {ts.CompilerOptions} compilerOptions TypeScript compiler options affecting module resolution strategy
+ * @returns {Function} A module resolution function with built-in caching mechanism
  */
 function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions) {
+  // Create module resolution cache
   const cache = ts.createModuleResolutionCache(
     host.getCurrentDirectory(),
     filename => {
@@ -189,11 +211,11 @@ function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptio
 /**
  * @function transformFile
  * @description Transforms a file's content by updating import/export specifiers to resolved paths
- * @param path The file path to transform
- * @param content The original file content
- * @param mapExtension Function to map file extensions
- * @param resolveModule Module resolution function
- * @returns A MagicString instance with transformed specifiers
+ * @param {string} path The file path to transform
+ * @param {string} content The original file content
+ * @param {MapExtension} mapExtension Function to map file extensions
+ * @param {ResolveModule} resolveModule Module resolution function
+ * @returns {MagicString} MagicString instance with transformed specifiers
  */
 function transformFile(
   path: string,
@@ -209,7 +231,7 @@ function transformFile(
   /**
    * @function rewriteSpecifier
    * @description Updates a module specifier to its resolved relative path
-   * @param specifier The string literal node representing the module specifier
+   * @param {ts.StringLiteral} specifier The string literal node representing the module specifier
    */
   function rewriteSpecifier(specifier: ts.StringLiteral) {
     const moduleName = specifier.text;
@@ -238,7 +260,7 @@ function transformFile(
   /**
    * @function visit
    * @description Recursively visits AST nodes to find module specifiers
-   * @param node The AST node to visit
+   * @param {ts.Node} node The AST node to visit
    */
   function visit(node: ts.Node) {
     let specifier: ts.Node | undefined;
@@ -270,10 +292,10 @@ function transformFile(
 /**
  * @function rewriteSpecifiersInFile
  * @description Asynchronously rewrites import/export specifiers in a file and saves changes
- * @param path The file path to process
- * @param mapExtension Function to map file extensions
- * @param resolveModule Module resolution function
- * @returns true if the file was modified, false otherwise
+ * @param {string} path The file path to process
+ * @param {MapExtension} mapExtension Function to map file extensions
+ * @param {ResolveModule} resolveModule Module resolution function
+ * @returns {Promise<boolean>} true if the file was modified, false otherwise
  */
 async function rewriteSpecifiersInFile(
   path: string,
@@ -298,12 +320,12 @@ async function rewriteSpecifiersInFile(
 /**
  * @function resolvePaths
  * @description Main entry point - resolves and updates module paths in TypeScript declaration files
- * @param root Root directory to scan for TypeScript files
- * @param options Configuration options
- * @param options.exclude Function to exclude specific paths from processing
- * @param options.tsconfig Path to TypeScript configuration file
- * @param options.mapExtension Function to map file extensions during path resolution
- * @returns A Set of file paths that were modified
+ * @param {string} root Root directory to scan for TypeScript files
+ * @param {Options} [options] Configuration options object
+ * @param {Filter} [options.exclude=DEFAULT_EXCLUDE] Function to exclude specific paths from processing
+ * @param {string} [options.tsconfig='tsconfig.json'] Path to TypeScript configuration file
+ * @param {MapExtension} [options.mapExtension=DEFAULT_MAP_EXTENSION] Function to map file extensions during path resolution
+ * @returns {Promise<Set<string>>} A Set containing file paths that were modified
  */
 export async function resolvePaths(
   root: string,
@@ -334,6 +356,7 @@ export async function resolvePaths(
     }
   }
 
+  // Rename files to match mapped extensions
   for (const importer of importers) {
     const path = importer.replace(IMPORTER_EXT_RE, extname => {
       return mapExtension({ path: importer, extname });
