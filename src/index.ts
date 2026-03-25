@@ -103,36 +103,27 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
 /**
  * @function createModuleResolver
  * @description Creates a module resolution function with caching for improved performance
- * @param host TypeScript module resolution host
- * @param compilerOptions TypeScript compiler options
  * @returns A function that resolves module names to their file paths with caching
  */
-function createModuleResolver(host: ts.ModuleResolutionHost, compilerOptions: ts.CompilerOptions) {
-  // Create cache to store resolved modules and avoid repeated resolution
-  const cache = new Map<string, ts.ResolvedModule | undefined>();
+function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions) {
+  const cache = ts.createModuleResolutionCache(
+    host.getCurrentDirectory(),
+    filename => filename,
+    compilerOptions
+  );
 
   // Return resolver function with closure over the cache
   return function resolveModule(moduleName: string, containingFile: string) {
-    // Create unique cache key from file and module name
-    const key = `${containingFile}::${moduleName}`;
-
-    // Return cached result if available
-    if (cache.has(key)) {
-      return cache.get(key);
-    }
-
     // Resolve module using TypeScript's module resolution
-    const resolved = ts.resolveModuleName(
+    const { resolvedModule } = ts.resolveModuleName(
       moduleName,
       containingFile,
       compilerOptions,
-      host
-    ).resolvedModule;
+      host,
+      cache
+    );
 
-    // Cache the resolved module for future lookups
-    cache.set(key, resolved);
-
-    return resolved;
+    return resolvedModule;
   };
 }
 
@@ -181,19 +172,15 @@ function transformFile(
    * Recursively visits AST nodes to find module specifiers
    */
   function visit(node: ts.Node) {
-    let specifier: ts.StringLiteral | undefined;
+    let specifier: ts.Node | undefined;
 
     // Handle import declarations: import ... from 'module'
-    if (ts.isImportDeclaration(node)) {
-      specifier = node.moduleSpecifier as ts.StringLiteral;
-    }
-    // Handle export declarations: export ... from 'module'
-    else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
-      specifier = node.moduleSpecifier as ts.StringLiteral;
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      specifier = node.moduleSpecifier;
     }
     // Handle import type nodes: import('type').Type
     else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
-      specifier = node.argument.literal as ts.StringLiteral;
+      specifier = node.argument.literal;
     }
 
     // Update the specifier if found and is a string literal
@@ -250,13 +237,10 @@ export async function resolvePaths(
 ): Promise<Set<string>> {
   // Track changed files
   const changed = new Set<string>();
-
   // Load TypeScript compiler options from tsconfig
   const compilerOptions = getCompilerOptions(resolve(tsconfig));
-
   // Create module resolver with caching
   const resolveModule = createModuleResolver(ts.sys, compilerOptions);
-
   // Scan for .d.ts files, applying exclude filter
   const files = scanFiles(root, path => path.endsWith('.d.ts') && !exclude(path));
 
