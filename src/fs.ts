@@ -10,7 +10,7 @@ import { readdir } from 'node:fs/promises';
  * @interface Filter
  * @description Function interface for filtering file paths
  */
-interface Filter {
+export interface Filter {
   /**
    * @param path The file path to filter
    * @returns true if the file should be included, false otherwise

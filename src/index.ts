@@ -3,10 +3,20 @@
  */
 
 import ts from 'typescript';
-import { scanFiles } from './fs';
 import MagicString from 'magic-string';
+import { Filter, scanFiles } from './fs';
 import { dirname, relative, resolve } from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
+
+export interface MapExtensionContext {
+  extname: string;
+  resolved: string;
+  importer?: string;
+}
+
+export interface MapExtension {
+  (context: MapExtensionContext): string;
+}
 
 /**
  * @interface Options
@@ -14,38 +24,54 @@ import { readFile, writeFile } from 'node:fs/promises';
  */
 export interface Options {
   /**
-   * @description Path to TypeScript configuration file
-   * @default 'tsconfig.json'
-   */
-  tsconfig?: string;
-  /**
    * @description Function to exclude specific paths from processing
    * @param path File path to check
    * @returns true if the path should be excluded, false otherwise
    */
-  exclude?(path: string): boolean;
+  exclude?: Filter;
+  /**
+   * @description Path to TypeScript configuration file
+   * @default 'tsconfig.json'
+   */
+  tsconfig?: string;
+  mapExtension?: MapExtension;
 }
+
+type ResolveModule = ReturnType<typeof createModuleResolver>;
 
 /**
  * @constant EXTENSION_MAP
  * @description Maps TypeScript/JavaScript file extensions to their compiled output extensions
  */
 const EXTENSION_MAP: Record<string, string> = {
-  ts: '.js',
-  tsx: '.js',
-  js: '.js',
-  jsx: '.js',
-  cts: '.cjs',
-  cjs: '.cjs',
-  mts: '.mjs',
-  mjs: '.mjs'
+  '.ts': '.js',
+  '.jsx': '.js',
+  '.tsx': '.js',
+  '.cts': '.cjs',
+  '.mts': '.mjs'
 };
 
+const IMPORTER_EXT_RE = /\.[cm]?ts/i;
+
 /**
- * @constant EXT_RE
+ * @constant MODULE_EXT_RE
  * @description Regular expression to match TypeScript/JavaScript file extensions including declaration files
  */
-const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
+const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
+
+/**
+ * @constant DEFAULT_EXCLUDE
+ * @description Default filter function to exclude non-TypeScript files
+ */
+const DEFAULT_EXCLUDE: Filter = () => false;
+
+const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
+  if (importer) {
+    return EXTENSION_MAP[extname.toLocaleLowerCase()] ?? extname;
+  }
+
+  return extname;
+};
 
 /**
  * @function toRelative
@@ -54,15 +80,13 @@ const EXT_RE = /\.(?:(?:d\.)?([cm]?tsx?)|([cm]?jsx?))$/i;
  * @param to The target file path
  * @returns Relative path with normalized separators and mapped extensions
  */
-function toRelative(from: string, to: string) {
+function toRelative(from: string, to: string, mapExtension: MapExtension) {
   // Get relative path from source file directory to target file
   let path = relative(dirname(from), to);
 
   // Replace TypeScript/JavaScript extensions with their compiled equivalents
-  path = path.replace(EXT_RE, (match, tsExt?: string, jsExt?: string) => {
-    const ext = (tsExt || jsExt)?.toLowerCase();
-
-    return ext ? EXTENSION_MAP[ext] || match : match;
+  path = path.replace(MODULE_EXT_RE, (match, extname?: string) => {
+    return extname ? mapExtension({ extname, resolved: to, importer: from }) : match;
   });
 
   // Ensure relative paths start with './'
@@ -110,7 +134,13 @@ function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
 function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions) {
   const cache = ts.createModuleResolutionCache(
     host.getCurrentDirectory(),
-    filename => filename,
+    filename => {
+      if (host.useCaseSensitiveFileNames) {
+        return filename;
+      }
+
+      return filename.toLowerCase();
+    },
     compilerOptions
   );
 
@@ -140,7 +170,8 @@ function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptio
 function transformFile(
   path: string,
   content: string,
-  resolveModule: ReturnType<typeof createModuleResolver>
+  mapExtension: MapExtension,
+  resolveModule: ResolveModule
 ) {
   // Create MagicString instance for efficient source code manipulation
   const source = new MagicString(content);
@@ -148,18 +179,22 @@ function transformFile(
   const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
 
   /**
-   * @function updateSpecifier
+   * @function rewriteSpecifier
    * @description Updates a module specifier to its resolved relative path
    * @param specifier The string literal node representing the module specifier
    */
-  function updateSpecifier(specifier: ts.StringLiteral) {
+  function rewriteSpecifier(specifier: ts.StringLiteral) {
     const moduleName = specifier.text;
     // Resolve the module name to its actual file path
     const resolved = resolveModule(moduleName, path);
 
+    if (!resolved) {
+      throw new Error(`could not resolve module '${moduleName}' from '${path}'`);
+    }
+
     // Only update if resolved and not an external library import
-    if (resolved && !resolved.isExternalLibraryImport) {
-      const resolvedModuleName = toRelative(path, resolved.resolvedFileName);
+    if (!resolved.isExternalLibraryImport) {
+      const resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
 
       // Replace the specifier text if the resolved path is different
       if (resolvedModuleName !== moduleName) {
@@ -191,7 +226,7 @@ function transformFile(
 
     // Update the specifier if found and is a string literal
     if (specifier && ts.isStringLiteral(specifier)) {
-      updateSpecifier(specifier);
+      rewriteSpecifier(specifier);
     }
 
     // Continue traversing child nodes
@@ -213,12 +248,13 @@ function transformFile(
  */
 async function rewriteSpecifiersInFile(
   path: string,
-  resolveModule: ReturnType<typeof createModuleResolver>
+  mapExtension: MapExtension,
+  resolveModule: ResolveModule
 ) {
   // Read file content
   const content = await readFile(path, 'utf8');
   // Transform the file content
-  const source = transformFile(path, content, resolveModule);
+  const source = transformFile(path, content, mapExtension, resolveModule);
 
   // Write back only if changes were made
   if (source.hasChanged()) {
@@ -239,8 +275,13 @@ async function rewriteSpecifiersInFile(
  */
 export async function resolvePaths(
   root: string,
-  { tsconfig = 'tsconfig.json', exclude = () => false }: Options = {}
+  {
+    exclude = DEFAULT_EXCLUDE,
+    tsconfig = 'tsconfig.json',
+    mapExtension = DEFAULT_MAP_EXTENSION
+  }: Options = {}
 ): Promise<Set<string>> {
+  const importers: string[] = [];
   // Track changed files
   const changed = new Set<string>();
   // Load TypeScript compiler options from tsconfig
@@ -248,13 +289,25 @@ export async function resolvePaths(
   // Create module resolver with caching
   const resolveModule = createModuleResolver(ts.sys, compilerOptions);
   // Scan for .d.ts files, applying exclude filter
-  const files = scanFiles(root, path => path.endsWith('.d.ts') && !exclude(path));
+  const files = scanFiles(root, path => /\.([cm]?ts)/i.test(path) && !exclude(path));
 
   // Process each file asynchronously
   for await (const file of files) {
+    importers.push(file);
+
     // Rewrite specifiers and track if file was modified
-    if (await rewriteSpecifiersInFile(file, resolveModule)) {
+    if (await rewriteSpecifiersInFile(file, mapExtension, resolveModule)) {
       changed.add(file);
+    }
+  }
+
+  for (const importer of importers) {
+    const path = importer.replace(IMPORTER_EXT_RE, extname => {
+      return mapExtension({ resolved: importer, extname });
+    });
+
+    if (importer !== path) {
+      rename(importer, path);
     }
   }
 
