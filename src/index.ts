@@ -8,12 +8,31 @@ import { Filter, scanFiles } from './fs';
 import { dirname, relative, resolve } from 'node:path';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 
+/**
+ * @interface MapExtensionContext
+ * @description Context object for mapping file extensions
+ */
 export interface MapExtensionContext {
+  /**
+   * @description The resolved file path being processed
+   */
+  path: string;
+  /**
+   * @description The file extension to map
+   */
   extname: string;
-  resolved: string;
+  /**
+   * @description Optional importer file path
+   */
   importer?: string;
 }
 
+/**
+ * @function MapExtension
+ * @description Function type for mapping file extensions
+ * @param context The map extension context
+ * @returns The mapped file extension
+ */
 export interface MapExtension {
   (context: MapExtensionContext): string;
 }
@@ -34,6 +53,9 @@ export interface Options {
    * @default 'tsconfig.json'
    */
   tsconfig?: string;
+  /**
+   * @description Function to map file extensions during path resolution
+   */
   mapExtension?: MapExtension;
 }
 
@@ -61,10 +83,14 @@ const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 
 /**
  * @constant DEFAULT_EXCLUDE
- * @description Default filter function to exclude non-TypeScript files
+ * @description Default filter function that excludes no files (includes all)
  */
 const DEFAULT_EXCLUDE: Filter = () => false;
 
+/**
+ * @constant DEFAULT_MAP_EXTENSION
+ * @description Default extension mapping function that maps TypeScript extensions to JavaScript
+ */
 const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   if (importer) {
     return EXTENSION_MAP[extname.toLocaleLowerCase()] ?? extname;
@@ -77,7 +103,8 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
  * @function toRelative
  * @description Converts an absolute path to a relative import path with proper extension mapping
  * @param from The source file path
- * @param to The target file path
+ * @param to The target file path to resolve
+ * @param mapExtension Function to map file extensions
  * @returns Relative path with normalized separators and mapped extensions
  */
 function toRelative(from: string, to: string, mapExtension: MapExtension) {
@@ -86,7 +113,7 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
 
   // Replace TypeScript/JavaScript extensions with their compiled equivalents
   path = path.replace(MODULE_EXT_RE, (match, extname?: string) => {
-    return extname ? mapExtension({ extname, resolved: to, importer: from }) : match;
+    return extname ? mapExtension({ path: to, extname, importer: from }) : match;
   });
 
   // Ensure relative paths start with './'
@@ -164,6 +191,7 @@ function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptio
  * @description Transforms a file's content by updating import/export specifiers to resolved paths
  * @param path The file path to transform
  * @param content The original file content
+ * @param mapExtension Function to map file extensions
  * @param resolveModule Module resolution function
  * @returns A MagicString instance with transformed specifiers
  */
@@ -243,6 +271,7 @@ function transformFile(
  * @function rewriteSpecifiersInFile
  * @description Asynchronously rewrites import/export specifiers in a file and saves changes
  * @param path The file path to process
+ * @param mapExtension Function to map file extensions
  * @param resolveModule Module resolution function
  * @returns true if the file was modified, false otherwise
  */
@@ -269,8 +298,11 @@ async function rewriteSpecifiersInFile(
 /**
  * @function resolvePaths
  * @description Main entry point - resolves and updates module paths in TypeScript declaration files
- * @param root Root directory to scan for .d.ts files
- * @param options Configuration options including tsconfig path and exclude function
+ * @param root Root directory to scan for TypeScript files
+ * @param options Configuration options
+ * @param options.exclude Function to exclude specific paths from processing
+ * @param options.tsconfig Path to TypeScript configuration file
+ * @param options.mapExtension Function to map file extensions during path resolution
  * @returns A Set of file paths that were modified
  */
 export async function resolvePaths(
@@ -281,6 +313,7 @@ export async function resolvePaths(
     mapExtension = DEFAULT_MAP_EXTENSION
   }: Options = {}
 ): Promise<Set<string>> {
+  // Collect all TypeScript files for extension mapping
   const importers: string[] = [];
   // Track changed files
   const changed = new Set<string>();
@@ -303,7 +336,7 @@ export async function resolvePaths(
 
   for (const importer of importers) {
     const path = importer.replace(IMPORTER_EXT_RE, extname => {
-      return mapExtension({ resolved: importer, extname });
+      return mapExtension({ path: importer, extname });
     });
 
     if (importer !== path) {
