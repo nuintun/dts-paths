@@ -114,7 +114,7 @@ const DEFAULT_EXCLUDE: Filter = () => false;
  */
 const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   if (importer) {
-    return EXTENSION_MAP[extname.toLocaleLowerCase()] ?? extname;
+    return EXTENSION_MAP[extname.toLowerCase()] ?? extname;
   }
 
   return extname;
