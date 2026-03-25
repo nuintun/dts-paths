@@ -375,11 +375,13 @@ export async function resolvePaths(
       });
 
       if (importer !== path) {
+        // Rename importer file
         await rename(importer, path);
 
-        // Remove old importer path.
+        // Remove old importer path
         changed.delete(importer);
-        // Add renamed path as changed.
+
+        // Add renamed path as changed
         changed.add(path);
       }
     })
