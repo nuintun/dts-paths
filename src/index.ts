@@ -342,7 +342,7 @@ export async function resolvePaths(
   // Create module resolver with caching
   const resolveModule = createModuleResolver(ts.sys, compilerOptions);
   // Scan TypeScript-related files.
-  const files = scanFiles(root, path => /\.([cm]?ts)/i.test(path) && !exclude(path));
+  const files = scanFiles(root, path => IMPORTER_EXT_RE.test(path) && !exclude(path));
 
   // Process each file asynchronously
   for await (const file of files) {
