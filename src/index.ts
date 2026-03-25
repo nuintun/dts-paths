@@ -261,13 +261,20 @@ function transformFile(
   function visit(node: ts.Node) {
     let specifier: ts.Node | undefined;
 
-    // Handle import declarations: import ... from 'module'
+    // Handle import/export declarations: import ... from 'module' / export ... from 'module'
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
       specifier = node.moduleSpecifier;
     }
-    // Handle import type nodes: import('type').Type
+    // Handle import type nodes: import('type')
     else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
       specifier = node.argument.literal;
+    }
+    // Handle import equals declarations: import x = require('module')
+    else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      specifier = node.moduleReference.expression;
     }
 
     // Update the specifier if found and is a string literal
@@ -378,11 +385,11 @@ export async function resolvePaths(
         // Rename importer file
         await rename(importer, path);
 
-        // Remove old importer path
-        changed.delete(importer);
-
-        // Add renamed path as changed
-        changed.add(path);
+        // Keep returned changed paths aligned with the renamed on-disk filename.
+        // Only remap entries that were previously marked as changed by content rewrite.
+        if (changed.delete(importer)) {
+          changed.add(path);
+        }
       }
     })
   );
