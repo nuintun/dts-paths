@@ -339,6 +339,8 @@ export async function resolvePaths(
   const importers: string[] = [];
   // Track changed files
   const changed = new Set<string>();
+  // Stack of rewrite tasks
+  const rewriteTasks: Promise<void>[] = [];
   // Load TypeScript compiler options from tsconfig
   const compilerOptions = getCompilerOptions(resolve(tsconfig));
   // Create module resolver with caching
@@ -348,24 +350,40 @@ export async function resolvePaths(
 
   // Process each file asynchronously
   for await (const file of files) {
+    /**
+     * @function rewriteTask
+     * @description Asynchronous rewrite task
+     */
+    const rewriteTask = async () => {
+      // Rewrite specifiers and track if file was modified
+      if (await rewriteSpecifiersInFile(file, mapExtension, resolveModule)) {
+        changed.add(file);
+      }
+    };
+
+    // Collect importers for extension mapping
     importers.push(file);
 
-    // Rewrite specifiers and track if file was modified
-    if (await rewriteSpecifiersInFile(file, mapExtension, resolveModule)) {
-      changed.add(file);
-    }
+    // Create a rewrite task
+    rewriteTasks.push(rewriteTask());
   }
+
+  // Wait for all rewrite tasks to complete
+  await Promise.all(rewriteTasks);
 
   // Rename files to match mapped extensions
-  for (const importer of importers) {
-    const path = importer.replace(IMPORTER_EXT_RE, extname => {
-      return mapExtension({ path: importer, extname });
-    });
+  await Promise.all(
+    importers.map(async importer => {
+      const path = importer.replace(IMPORTER_EXT_RE, extname => {
+        return mapExtension({ path: importer, extname });
+      });
 
-    if (importer !== path) {
-      rename(importer, path);
-    }
-  }
+      if (importer !== path) {
+        await rename(importer, path);
+      }
+    })
+  );
 
+  // Return the set of changed files
   return changed;
 }
