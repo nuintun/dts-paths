@@ -41,6 +41,43 @@ export interface MapExtension {
 }
 
 /**
+ * @interface TsConfig
+ * @description tsconfig.json object shape accepted by resolvePaths
+ */
+export interface TsConfig {
+  /**
+   * @property {string | string[]} [extends]
+   * @description Path(s) to base tsconfig files
+   */
+  extends?: string | string[];
+  /**
+   * @property {string[]} [files]
+   * @description Explicit file list for tsconfig parsing
+   */
+  files?: string[];
+  /**
+   * @property {string[]} [include]
+   * @description Include globs for tsconfig parsing
+   */
+  include?: string[];
+  /**
+   * @property {string[]} [exclude]
+   * @description Exclude globs for tsconfig parsing
+   */
+  exclude?: string[];
+  /**
+   * @property {ts.ProjectReference[]} [references]
+   * @description Project references used by tsconfig parsing
+   */
+  references?: ts.ProjectReference[];
+  /**
+   * @property {ts.CompilerOptions} [compilerOptions]
+   * @description TypeScript compiler options
+   */
+  compilerOptions?: ts.CompilerOptions;
+}
+
+/**
  * @interface Options
  * @description Configuration options for path resolution
  */
@@ -53,11 +90,11 @@ export interface Options {
    */
   exclude?: Filter;
   /**
-   * @property {string} [tsconfig='tsconfig.json']
-   * @description Configuration file path for TypeScript compiler options
+   * @property {string | TsConfig} [tsconfig='tsconfig.json']
+   * @description TypeScript configuration source used for module resolution
    * @default 'tsconfig.json'
    */
-  tsconfig?: string;
+  tsconfig?: string | TsConfig;
   /**
    * @property {MapExtension} [mapExtension]
    * @description Function that maps TypeScript/JavaScript file extensions to their compiled output extensions
@@ -121,6 +158,16 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
 };
 
 /**
+ * @function isString
+ * @description Checks whether a value is a string using Object.prototype.toString
+ * @param {unknown} value Value to check
+ * @returns {boolean} true if value is a string
+ */
+function isString(value: unknown): value is string {
+  return Object.prototype.toString.call(value) === '[object String]';
+}
+
+/**
  * @function toRelative
  * @description Converts an absolute path to a relative import path with proper extension mapping
  * @param {string} from Source file path (the file containing the import statement)
@@ -149,27 +196,33 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
 /**
  * @function getCompilerOptions
  * @description Reads and parses TypeScript compiler options from a tsconfig file
- * @param {string} tsconfig Path to the tsconfig.json file
+ * @param {ts.System} host TypeScript system interface providing file system operations
+ * @param {string | TsConfig} tsconfig TypeScript configuration source
  * @returns {ts.CompilerOptions} Parsed TypeScript compiler options
  * @throws {Error} Throws error if the config file cannot be read or parsed
  */
-function getCompilerOptions(tsconfig: string): ts.CompilerOptions {
-  // Read and parse tsconfig.json file
-  const configFile = ts.readConfigFile(tsconfig, ts.sys.readFile);
+function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
+  // Support tsconfig file path
+  if (isString(tsconfig)) {
+    const path = resolve(tsconfig);
+    const configFile = ts.readConfigFile(path, host.readFile);
 
-  // Throw error if config file cannot be read
-  if (configFile.error) {
-    throw new Error(
-      ts.formatDiagnosticsWithColorAndContext([configFile.error], {
-        getNewLine: () => '\n',
-        getCanonicalFileName: name => name,
-        getCurrentDirectory: ts.sys.getCurrentDirectory
-      })
-    );
+    // Throw error if config file cannot be read
+    if (configFile.error) {
+      throw new Error(
+        ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+          getNewLine: () => '\n',
+          getCanonicalFileName: name => name,
+          getCurrentDirectory: host.getCurrentDirectory
+        })
+      );
+    }
+
+    return ts.parseJsonConfigFileContent(configFile.config, host, dirname(path)).options;
   }
 
-  // Parse config file content and extract compiler options
-  return ts.parseJsonConfigFileContent(configFile.config, ts.sys, dirname(tsconfig)).options;
+  // Support passing tsconfig JSON object
+  return ts.parseJsonConfigFileContent(tsconfig, host, host.getCurrentDirectory()).options;
 }
 
 /**
@@ -326,7 +379,7 @@ async function rewriteSpecifiersInFile(
  * @param {string} root Root directory to scan for TypeScript files
  * @param {Options} [options] Configuration options object
  * @param {Filter} [options.exclude=DEFAULT_EXCLUDE] Function to exclude specific paths from processing
- * @param {string} [options.tsconfig='tsconfig.json'] Path to TypeScript configuration file
+ * @param {string | TsConfig} [options.tsconfig='tsconfig.json'] TypeScript configuration source
  * @param {MapExtension} [options.mapExtension=DEFAULT_MAP_EXTENSION] Function to map file extensions during path resolution
  * @returns {Promise<Set<string>>} A Set containing file paths that were modified
  */
@@ -338,6 +391,8 @@ export async function resolvePaths(
     mapExtension = DEFAULT_MAP_EXTENSION
   }: Options = {}
 ): Promise<Set<string>> {
+  // TypeScript system host used for config parsing and module resolution.
+  const host = ts.sys;
   // Collect all TypeScript files for extension mapping
   const importers: string[] = [];
   // Track changed files
@@ -345,9 +400,9 @@ export async function resolvePaths(
   // Stack of rewrite tasks
   const rewriteTasks: Promise<void>[] = [];
   // Load TypeScript compiler options from tsconfig
-  const compilerOptions = getCompilerOptions(resolve(tsconfig));
+  const compilerOptions = getCompilerOptions(host, tsconfig);
   // Create module resolver with caching
-  const resolveModule = createModuleResolver(ts.sys, compilerOptions);
+  const resolveModule = createModuleResolver(host, compilerOptions);
   // Scan TypeScript-related files.
   const files = scanFiles(root, path => IMPORTER_EXT_RE.test(path) && !exclude(path));
 
