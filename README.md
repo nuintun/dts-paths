@@ -40,13 +40,15 @@ await resolvePaths('./dist/types', {
 import { resolvePaths } from 'dts-paths';
 
 await resolvePaths('./dist/types', {
-  // Skip files that do not need to be processed
-  exclude: path => path.includes('/internal/'),
   // Supports tsconfig path or inline tsconfig object
   tsconfig: './tsconfig.json',
+  // Skip files that do not need to be processed
+  exclude: path => path.includes('/internal/'),
   // Custom extension mapping strategy
   mapExtension: ({ extname, importer }) => {
-    if (importer && extname === '.ts') return '.js';
+    if (importer && extname === '.ts') {
+      return '.js';
+    }
 
     return extname;
   }
