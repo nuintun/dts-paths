@@ -168,6 +168,24 @@ function isString(value: unknown): value is string {
 }
 
 /**
+ * @function throwIfDiagnostics
+ * @description Throws an error if TypeScript diagnostics exist
+ * @param {ts.System} host TypeScript system host
+ * @param {readonly ts.Diagnostic[]} diagnostics TypeScript diagnostics
+ */
+function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
+  if (diagnostics.length > 0) {
+    throw new Error(
+      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+        getNewLine: () => '\n',
+        getCanonicalFileName: name => name,
+        getCurrentDirectory: host.getCurrentDirectory
+      })
+    );
+  }
+}
+
+/**
  * @function toRelative
  * @description Converts an absolute path to a relative import path with proper extension mapping
  * @param {string} from Source file path (the file containing the import statement)
@@ -202,6 +220,9 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
  * @throws {Error} Throws error if the config file cannot be read or parsed
  */
 function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
+  let config: TsConfig;
+  let basePath = host.getCurrentDirectory();
+
   // Support tsconfig file path
   if (isString(tsconfig)) {
     const path = resolve(tsconfig);
@@ -209,20 +230,21 @@ function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.Co
 
     // Throw error if config file cannot be read
     if (configFile.error) {
-      throw new Error(
-        ts.formatDiagnosticsWithColorAndContext([configFile.error], {
-          getNewLine: () => '\n',
-          getCanonicalFileName: name => name,
-          getCurrentDirectory: host.getCurrentDirectory
-        })
-      );
+      throwIfDiagnostics(host, [configFile.error]);
     }
 
-    return ts.parseJsonConfigFileContent(configFile.config, host, dirname(path)).options;
+    basePath = dirname(path);
+    config = configFile.config;
+  } else {
+    // Support passing tsconfig JSON object
+    config = tsconfig;
   }
 
-  // Support passing tsconfig JSON object
-  return ts.parseJsonConfigFileContent(tsconfig, host, host.getCurrentDirectory()).options;
+  const parsed = ts.parseJsonConfigFileContent(config, host, basePath);
+
+  throwIfDiagnostics(host, parsed.errors);
+
+  return parsed.options;
 }
 
 /**
