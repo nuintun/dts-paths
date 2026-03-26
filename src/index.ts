@@ -8,6 +8,9 @@ import { Filter, scanFiles } from './fs';
 import { dirname, relative, resolve } from 'node:path';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 
+// Re-export types
+export type { Filter };
+
 /**
  * @interface MapExtensionContext
  * @description Context object for mapping file extensions during module resolution
@@ -51,30 +54,10 @@ export interface TsConfig {
    */
   extends?: string | string[];
   /**
-   * @property {string[]} [files]
-   * @description Explicit file list for tsconfig parsing
-   */
-  files?: string[];
-  /**
-   * @property {string[]} [include]
-   * @description Include globs for tsconfig parsing
-   */
-  include?: string[];
-  /**
-   * @property {string[]} [exclude]
-   * @description Exclude globs for tsconfig parsing
-   */
-  exclude?: string[];
-  /**
-   * @property {ts.ProjectReference[]} [references]
-   * @description Project references used by tsconfig parsing
-   */
-  references?: ts.ProjectReference[];
-  /**
    * @property {ts.CompilerOptions} [compilerOptions]
    * @description TypeScript compiler options
    */
-  compilerOptions?: ts.CompilerOptions;
+  compilerOptions?: Pick<ts.CompilerOptions, 'paths' | 'rootDir'>;
 }
 
 /**
@@ -233,18 +216,25 @@ function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.Co
       throwIfDiagnostics(host, [configFile.error]);
     }
 
+    // Set base path for resolving relative paths in tsconfig
     basePath = dirname(path);
+    // Use the config content
     config = configFile.config;
   } else {
     // Support passing tsconfig JSON object
     config = tsconfig;
   }
 
-  const parsed = ts.parseJsonConfigFileContent(config, host, basePath);
+  // Parse the config content to get compiler options
+  const { options, errors } = ts.parseJsonConfigFileContent(config, host, basePath);
 
-  throwIfDiagnostics(host, parsed.errors);
+  // Throw error if config content cannot be parsed
+  throwIfDiagnostics(host, errors);
 
-  return parsed.options;
+  // Ensure declaration files are not emitted since we are only rewriting paths
+  options.declaration = false;
+
+  return options;
 }
 
 /**
@@ -298,10 +288,16 @@ function transformFile(
   mapExtension: MapExtension,
   resolveModule: ResolveModule
 ) {
+  // Parse source file into AST
+  const sourceFile = ts.createSourceFile(
+    path,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
   // Create MagicString instance for efficient source code manipulation
   const source = new MagicString(content);
-  // Parse source file into AST
-  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
 
   /**
    * @function rewriteSpecifier

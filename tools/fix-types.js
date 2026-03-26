@@ -13,8 +13,7 @@ Promise.all([
         paths: {
           '/*': ['./cjs/*']
         }
-      },
-      include: ['./cjs/**/*']
+      }
     },
     mapExtension({ importer }) {
       return importer ? '.cjs' : '.cts';
@@ -28,8 +27,7 @@ Promise.all([
         paths: {
           '/*': ['./esm/*']
         }
-      },
-      include: ['./esm/**/*']
+      }
     }
   })
 ]).then(
