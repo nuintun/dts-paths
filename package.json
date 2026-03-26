@@ -43,7 +43,7 @@
   "scripts": {
     "lint": "tsc --noEmit",
     "pretest": "pnpm build:main",
-    "test": "node tests/index.js",
+    "test": "node --test tests/index.js",
     "clean": "node tools/clean.js",
     "prepublishOnly": "pnpm build",
     "build:cjs": "rollup -c tools/rollup.cjs.js",
