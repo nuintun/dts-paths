@@ -1,25 +1,16 @@
 /**
- * @module tests/index
+ * @module index
  */
 
 import test from 'node:test';
-import assert from 'node:assert/strict';
-import { cp, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import assert from 'node:assert/strict';
 import { resolvePaths } from 'dts-paths';
+import { join, relative, resolve } from 'node:path';
+import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 
 const FIXTURE_TYPES = resolve('tests/types');
 const SNAPSHOTS = resolve('tests/snapshots');
-
-async function createWorkspace(prefix = 'dts-paths-test-') {
-  const root = await mkdtemp(join(tmpdir(), prefix));
-  const types = join(root, 'types');
-
-  await cp(FIXTURE_TYPES, types, { recursive: true });
-
-  return { root, types };
-}
 
 function createTsconfig(root) {
   return {
@@ -34,7 +25,16 @@ function createTsconfig(root) {
   };
 }
 
-async function listDtsFiles(root) {
+async function createWorkspace(prefix = 'dts-paths-test-') {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  const types = join(root, 'types');
+
+  await cp(FIXTURE_TYPES, types, { recursive: true });
+
+  return { root, types };
+}
+
+async function scanDtsFiles(root) {
   const files = [];
   const waiting = [root];
 
@@ -56,17 +56,17 @@ async function listDtsFiles(root) {
   return files.sort();
 }
 
-test('rewrite result should match static snapshots', async t => {
+test('rewrite result should match static snapshots', async test => {
   const { root, types } = await createWorkspace();
 
-  t.after(async () => {
+  test.after(async () => {
     await rm(root, { recursive: true, force: true });
   });
 
   await resolvePaths(types, { tsconfig: createTsconfig(types) });
 
-  const snapshotFiles = await listDtsFiles(SNAPSHOTS);
-  const typeFiles = await listDtsFiles(types);
+  const typeFiles = await scanDtsFiles(types);
+  const snapshotFiles = await scanDtsFiles(SNAPSHOTS);
 
   assert.equal(typeFiles.length, snapshotFiles.length);
 
@@ -78,16 +78,19 @@ test('rewrite result should match static snapshots', async t => {
 
     assert.ok(snapshotFile, `missing snapshot for ${rel}`);
 
-    const [actual, expected] = await Promise.all([readFile(file, 'utf8'), readFile(snapshotFile, 'utf8')]);
+    const [actual, expected] = await Promise.all([
+      readFile(file, 'utf8'),
+      readFile(snapshotFile, 'utf8')
+    ]);
 
     assert.equal(actual, expected, `rewritten content mismatch for ${rel}`);
   }
 });
 
-test('rewrite should be idempotent on copied types directory', async t => {
+test('rewrite should be idempotent on copied types directory', async test => {
   const { root, types } = await createWorkspace('dts-paths-idempotent-');
 
-  t.after(async () => {
+  test.after(async () => {
     await rm(root, { recursive: true, force: true });
   });
 
