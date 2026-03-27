@@ -45,9 +45,9 @@ await resolvePaths('./dist/types', {
   // Skip files that do not need to be processed
   exclude: path => path.includes('/internal/'),
   // Rewrite resolved external package ids (e.g. subpath -> root entry)
-  mapExternal: ({ name, subModuleName }) => {
-    if (name === 'lodash-es' && subModuleName) {
-      return `lodash-es/${subModuleName}`;
+  mapExternal: ({ name, importer }) => {
+    if (importer.endsWith('legacy.d.ts') && name === 'lodash-es') {
+      return 'lodash';
     }
 
     return name;
@@ -82,7 +82,9 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Type: `(context: MapExternalContext) => string`
 - Default: identity mapping (`name => name`)
 - Called when a specifier resolves to an external package.
-- `context` includes package metadata from TypeScript (`name`, `subModuleName`, `version`, etc.) and `importer`.
+- `context` contains:
+  - `name`: external package id from the original import specifier
+  - `importer`: file path of the declaration file that imports the package
 
 #### `options.mapExtension`
 
