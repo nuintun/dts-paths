@@ -204,7 +204,7 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
  */
 function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
   let config: TsConfig;
-  let basePath = host.getCurrentDirectory();
+  let basePath: string;
 
   // Support tsconfig file path
   if (isString(tsconfig)) {
@@ -223,6 +223,8 @@ function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.Co
   } else {
     // Support passing tsconfig JSON object
     config = tsconfig;
+    // Use current working directory as base path
+    basePath = host.getCurrentDirectory();
   }
 
   // Parse the config content to get compiler options
