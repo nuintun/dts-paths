@@ -13,31 +13,55 @@ export type { Filter };
 
 /**
  * @interface MapExtensionContext
- * @description Context object for mapping file extensions during module resolution
+ * @description Context for mapping file extensions during module resolution
  */
 export interface MapExtensionContext {
   /**
    * @property {string} path
-   * @description The resolved file path being processed
+   * @description Resolved file path being processed
    */
   path: string;
   /**
    * @property {string} extname
-   * @description The file extension to map (e.g., '.ts', '.tsx')
+   * @description File extension to map (e.g., '.ts', '.tsx')
    */
   extname: string;
   /**
    * @property {string} [importer]
-   * @description Optional importer file path that references this module
+   * @description Importer file path that references this module
    */
   importer?: string;
 }
 
 /**
+ * @interface MapExternalContext
+ * @description Context for mapping external library identifiers during module resolution
+ * @extends {ts.PackageId}
+ */
+interface MapExternalContext extends ts.PackageId {
+  /**
+   * @property {string} importer
+   * @description File path that imports the external library
+   */
+  importer: string;
+}
+
+/**
+ * @interface MapExternal
+ * @description Function for mapping external library names during module resolution
+ * @param {string} name External library module name
+ * @param {string} importer File path that imports the external library
+ * @returns {string} Mapped external library name, or original name if no mapping needed
+ */
+export interface MapExternal {
+  (context: MapExternalContext): string;
+}
+
+/**
  * @function MapExtension
- * @description Function type for mapping file extensions during module resolution
- * @param {MapExtensionContext} context The map extension context containing file information
- * @returns {string} The mapped file extension (e.g., '.ts' -> '.js')
+ * @description Function for mapping file extensions during module resolution
+ * @param {MapExtensionContext} context Context containing file information
+ * @returns {string} Mapped file extension (e.g., '.ts' -> '.js')
  */
 export interface MapExtension {
   (context: MapExtensionContext): string;
@@ -67,20 +91,25 @@ export interface TsConfig {
 export interface Options {
   /**
    * @property {Filter} [exclude]
-   * @description Filter function used to exclude specific file paths from being processed
+   * @description Filter function to exclude specific file paths from processing
    * @param {string} path File path to check for exclusion
-   * @returns {boolean} true if the path should be excluded, false otherwise
+   * @returns {boolean} true if path should be excluded, false otherwise
    */
   exclude?: Filter;
   /**
    * @property {string | TsConfig} [tsconfig='tsconfig.json']
-   * @description TypeScript configuration source used for module resolution
+   * @description TypeScript configuration source for module resolution
    * @default 'tsconfig.json'
    */
   tsconfig?: string | TsConfig;
   /**
+   * @property {MapExternal} [mapExternal]
+   * @description Function that maps external library names to resolved paths
+   */
+  mapExternal?: MapExternal;
+  /**
    * @property {MapExtension} [mapExtension]
-   * @description Function that maps TypeScript/JavaScript file extensions to their compiled output extensions
+   * @description Function that maps TypeScript/JavaScript extensions to compiled output extensions
    */
   mapExtension?: MapExtension;
 }
@@ -88,15 +117,15 @@ export interface Options {
 /**
  * @typedef {Function} ResolveModule
  * @description Module resolution function type definition with caching
- * @param {string} moduleName The module name to resolve (e.g., './utils/helper')
- * @param {string} containingFile The file path containing the module reference
+ * @param {string} moduleName Module name to resolve (e.g., './utils/helper')
+ * @param {string} containingFile File path containing the module reference
  * @returns {ts.ResolvedModule | undefined} Resolved module information, or undefined if resolution fails
  */
 type ResolveModule = ReturnType<typeof createModuleResolver>;
 
 /**
  * @constant {Object<string, string>} EXTENSION_MAP
- * @description Maps TypeScript/JavaScript file extensions to their compiled output extensions
+ * @description Maps TypeScript/JavaScript extensions to compiled output extensions
  */
 const EXTENSION_MAP: Record<string, string> = {
   '.ts': '.js',
@@ -114,7 +143,7 @@ const IMPORTER_EXT_RE = /\.[cm]?ts$/i;
 
 /**
  * @constant {RegExp} MODULE_EXT_RE
- * @description Regular expression matching TypeScript/JavaScript file extensions including declaration files
+ * @description Regular expression matching TypeScript/JavaScript extensions including declaration files
  */
 const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 
@@ -123,6 +152,12 @@ const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
  * @description Default filter function that excludes no files (includes all files)
  */
 const DEFAULT_EXCLUDE: Filter = () => false;
+
+/**
+ * @constant {MapExternal} DEFAULT_MAP_EXTERNAL
+ * @description Default external library mapping function that returns original name unchanged
+ */
+const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name }) => name;
 
 /**
  * @constant {MapExtension} DEFAULT_MAP_EXTENSION
@@ -144,7 +179,7 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
  * @function isString
  * @description Checks whether a value is a string using Object.prototype.toString
  * @param {unknown} value Value to check
- * @returns {boolean} true if value is a string
+ * @returns {value is string} Type predicate indicating the value is a string
  */
 function isString(value: unknown): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
@@ -152,9 +187,10 @@ function isString(value: unknown): value is string {
 
 /**
  * @function throwIfDiagnostics
- * @description Throws an error if TypeScript diagnostics exist
- * @param {ts.System} host TypeScript system host
- * @param {readonly ts.Diagnostic[]} diagnostics TypeScript diagnostics
+ * @description Throws an error if TypeScript diagnostics exist, formatting them with color and context
+ * @param {ts.System} host TypeScript system host providing file system operations
+ * @param {readonly ts.Diagnostic[]} diagnostics TypeScript diagnostics to check and report
+ * @throws {Error} Error containing formatted diagnostic messages
  */
 function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
   if (diagnostics.length > 0) {
@@ -198,7 +234,7 @@ function toRelative(from: string, to: string, mapExtension: MapExtension) {
  * @function getCompilerOptions
  * @description Reads and parses TypeScript compiler options from a tsconfig file
  * @param {ts.System} host TypeScript system interface providing file system operations
- * @param {string | TsConfig} tsconfig TypeScript configuration source
+ * @param {string | TsConfig} tsconfig TypeScript configuration source (file path or config object)
  * @returns {ts.CompilerOptions} Parsed TypeScript compiler options
  * @throws {Error} Throws error if the config file cannot be read or parsed
  */
@@ -244,7 +280,7 @@ function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.Co
  * @description Creates a module resolution function with caching for improved performance
  * @param {ts.System} host TypeScript system interface providing file system operation capabilities
  * @param {ts.CompilerOptions} compilerOptions TypeScript compiler options affecting module resolution strategy
- * @returns {Function} A module resolution function with built-in caching mechanism
+ * @returns {ResolveModule} A module resolution function with built-in caching mechanism
  */
 function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions) {
   // Create module resolution cache
@@ -280,15 +316,17 @@ function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptio
  * @description Transforms a file's content by updating import/export specifiers to resolved paths
  * @param {string} path The file path to transform
  * @param {string} content The original file content
- * @param {MapExtension} mapExtension Function to map file extensions
  * @param {ResolveModule} resolveModule Module resolution function
+ * @param {MapExternal} mapExternal Function to map external library names
+ * @param {MapExtension} mapExtension Function to map file extensions
  * @returns {MagicString} MagicString instance with transformed specifiers
  */
 function transformFile(
   path: string,
   content: string,
-  mapExtension: MapExtension,
-  resolveModule: ResolveModule
+  resolveModule: ResolveModule,
+  mapExternal: MapExternal,
+  mapExtension: MapExtension
 ) {
   // Parse source file into AST
   const sourceFile = ts.createSourceFile(
@@ -312,8 +350,18 @@ function transformFile(
     const resolved = resolveModule(moduleName, path);
 
     // Only update if resolved and not an external library import
-    if (resolved && !resolved.isExternalLibraryImport) {
-      const resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
+    if (resolved) {
+      let resolvedModuleName = moduleName;
+
+      if (resolved.isExternalLibraryImport) {
+        const { packageId } = resolved;
+
+        if (packageId) {
+          resolvedModuleName = mapExternal({ ...packageId, importer: path });
+        }
+      } else {
+        resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
+      }
 
       // Replace the specifier text if the resolved path is different
       if (resolvedModuleName !== moduleName) {
@@ -369,19 +417,21 @@ function transformFile(
  * @function rewriteSpecifiersInFile
  * @description Asynchronously rewrites import/export specifiers in a file and saves changes
  * @param {string} path The file path to process
- * @param {MapExtension} mapExtension Function to map file extensions
  * @param {ResolveModule} resolveModule Module resolution function
+ * @param {MapExternal} mapExternal Function to map external library names
+ * @param {MapExtension} mapExtension Function to map file extensions
  * @returns {Promise<boolean>} true if the file was modified, false otherwise
  */
 async function rewriteSpecifiersInFile(
   path: string,
-  mapExtension: MapExtension,
-  resolveModule: ResolveModule
+  resolveModule: ResolveModule,
+  mapExternal: MapExternal,
+  mapExtension: MapExtension
 ) {
   // Read file content
   const content = await readFile(path, 'utf8');
   // Transform the file content
-  const source = transformFile(path, content, mapExtension, resolveModule);
+  const source = transformFile(path, content, resolveModule, mapExternal, mapExtension);
 
   // Write back only if changes were made
   if (source.hasChanged()) {
@@ -400,6 +450,7 @@ async function rewriteSpecifiersInFile(
  * @param {Options} [options] Configuration options object
  * @param {Filter} [options.exclude=DEFAULT_EXCLUDE] Function to exclude specific paths from processing
  * @param {string | TsConfig} [options.tsconfig='tsconfig.json'] TypeScript configuration source
+ * @param {MapExternal} [options.mapExternal=DEFAULT_MAP_EXTERNAL] Function to map external library names
  * @param {MapExtension} [options.mapExtension=DEFAULT_MAP_EXTENSION] Function to map file extensions during path resolution
  * @returns {Promise<Set<string>>} A Set containing file paths that were modified
  */
@@ -408,6 +459,7 @@ export async function resolvePaths(
   {
     exclude = DEFAULT_EXCLUDE,
     tsconfig = 'tsconfig.json',
+    mapExternal = DEFAULT_MAP_EXTERNAL,
     mapExtension = DEFAULT_MAP_EXTENSION
   }: Options = {}
 ): Promise<Set<string>> {
@@ -430,11 +482,12 @@ export async function resolvePaths(
   for await (const file of files) {
     /**
      * @function rewriteTask
-     * @description Asynchronous rewrite task
+     * @description Asynchronous rewrite task for a single file
+     * @returns {Promise<void>}
      */
     const rewriteTask = async () => {
       // Rewrite specifiers and track if file was modified
-      if (await rewriteSpecifiersInFile(file, mapExtension, resolveModule)) {
+      if (await rewriteSpecifiersInFile(file, resolveModule, mapExternal, mapExtension)) {
         changed.add(file);
       }
     };
