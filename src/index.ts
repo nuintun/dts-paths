@@ -12,6 +12,23 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 export type { Filter };
 
 /**
+ * @interface MapExternalContext
+ * @description Context for mapping external library names during module resolution
+ */
+export interface MapExternalContext {
+  /**
+   * @property {string} name
+   * @description Name of the external library module to map
+   */
+  name: string;
+  /**
+   * @property {string} importer
+   * @description File path that imports the external library
+   */
+  importer: string;
+}
+
+/**
  * @interface MapExtensionContext
  * @description Context for mapping file extensions during module resolution
  */
@@ -34,23 +51,9 @@ export interface MapExtensionContext {
 }
 
 /**
- * @interface MapExternalContext
- * @description Context for mapping external library identifiers during module resolution
- * @extends {ts.PackageId}
- */
-interface MapExternalContext extends ts.PackageId {
-  /**
-   * @property {string} importer
-   * @description File path that imports the external library
-   */
-  importer: string;
-}
-
-/**
  * @interface MapExternal
  * @description Function for mapping external library names during module resolution
- * @param {string} name External library module name
- * @param {string} importer File path that imports the external library
+ * @param {MapExternalContext} context Context containing external library information
  * @returns {string} Mapped external library name, or original name if no mapping needed
  */
 export interface MapExternal {
@@ -58,7 +61,7 @@ export interface MapExternal {
 }
 
 /**
- * @function MapExtension
+ * @interface MapExtension
  * @description Function for mapping file extensions during module resolution
  * @param {MapExtensionContext} context Context containing file information
  * @returns {string} Mapped file extension (e.g., '.ts' -> '.js')
@@ -150,20 +153,18 @@ const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 /**
  * @constant {Filter} DEFAULT_EXCLUDE
  * @description Default filter function that excludes no files (includes all files)
+ * @returns {boolean} Always returns false, meaning no files are excluded by default
  */
 const DEFAULT_EXCLUDE: Filter = () => false;
 
 /**
  * @constant {MapExternal} DEFAULT_MAP_EXTERNAL
  * @description Default external library mapping function that returns original name unchanged
+ * @param {MapExternalContext} context Context containing external library information
+ * @param {string} context.name External library module name
+ * @returns {string} Original external library name without modification
  */
-const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name, subModuleName }) => {
-  if (subModuleName) {
-    return `${name}/${subModuleName}`;
-  }
-
-  return name;
-};
+const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name }) => name;
 
 /**
  * @constant {MapExtension} DEFAULT_MAP_EXTENSION
@@ -196,7 +197,7 @@ function isString(value: unknown): value is string {
  * @description Throws an error if TypeScript diagnostics exist, formatting them with color and context
  * @param {ts.System} host TypeScript system host providing file system operations
  * @param {readonly ts.Diagnostic[]} diagnostics TypeScript diagnostics to check and report
- * @throws {Error} Error containing formatted diagnostic messages
+ * @throws {Error} Error containing formatted diagnostic messages with color and system context
  */
 function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
   if (diagnostics.length > 0) {
@@ -357,14 +358,10 @@ function transformFile(
 
     // Only update if resolved and not an external library import
     if (resolved) {
-      let resolvedModuleName = moduleName;
+      let resolvedModuleName: string;
 
       if (resolved.isExternalLibraryImport) {
-        const { packageId } = resolved;
-
-        if (packageId) {
-          resolvedModuleName = mapExternal({ ...packageId, importer: path });
-        }
+        resolvedModuleName = mapExternal({ name: moduleName, importer: path });
       } else {
         resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
       }
