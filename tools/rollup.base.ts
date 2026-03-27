@@ -8,10 +8,12 @@ import typescript from '@rollup/plugin-typescript';
 import pkg from '../package.json' with { type: 'json' };
 
 const externals = [
-  // Dependencies.
-  ...Object.keys(pkg.dependencies || {}),
-  // Peer dependencies.
-  ...Object.keys(pkg.peerDependencies || {})
+  // @ts-ignore
+  // Dependencies
+  ...Object.keys(pkg.dependencies ?? {}),
+  // @ts-ignore
+  // Peer dependencies
+  ...Object.keys(pkg.peerDependencies ?? {})
 ];
 
 const banner = `/**
@@ -27,7 +29,7 @@ const banner = `/**
 
 /**
  * @function rollup
- * @param {boolean} [esnext] Is esnext.
+ * @param {boolean} [esnext] Is esnext
  * @return {import('rollup').RollupOptions}
  */
 export default function rollup(esnext = false): RollupOptions {
