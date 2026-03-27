@@ -157,7 +157,13 @@ const DEFAULT_EXCLUDE: Filter = () => false;
  * @constant {MapExternal} DEFAULT_MAP_EXTERNAL
  * @description Default external library mapping function that returns original name unchanged
  */
-const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name }) => name;
+const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name, subModuleName }) => {
+  if (subModuleName) {
+    return `${name}/${subModuleName}`;
+  }
+
+  return name;
+};
 
 /**
  * @constant {MapExtension} DEFAULT_MAP_EXTENSION
