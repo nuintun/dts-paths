@@ -2,10 +2,10 @@
  * @module rollup.base
  */
 
+import { isBuiltin } from 'node:module';
+import type { RollupOptions } from 'rollup';
 import typescript from '@rollup/plugin-typescript';
-import { createRequire, isBuiltin } from 'node:module';
-
-const pkg = createRequire(import.meta.url)('../package.json');
+import pkg from '../package.json' with { type: 'json' };
 
 const externals = [
   // Dependencies.
@@ -30,7 +30,7 @@ const banner = `/**
  * @param {boolean} [esnext] Is esnext.
  * @return {import('rollup').RollupOptions}
  */
-export default function rollup(esnext) {
+export default function rollup(esnext = false): RollupOptions {
   return {
     input: 'src/index.ts',
     output: {

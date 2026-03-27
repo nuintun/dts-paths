@@ -5,8 +5,8 @@
     "newLine": "lf",
     "jsx": "react-jsx",
     "module": "esnext",
+    "rootDir": "./dts",
     "target": "esnext",
-    "rootDir": "./types",
     "skipLibCheck": true,
     "importHelpers": true,
     "noUnusedLocals": true,
@@ -17,12 +17,12 @@
     "moduleResolution": "bundler",
     "paths": {
       "/*": [
-        "./types/*"
+        "./dts/*"
       ]
     }
   },
   "include": [
-    "types/**/*"
+    "dts/**/*"
   ],
   "exclude": [
     "node_modules"
