@@ -44,18 +44,56 @@ await resolvePaths('./dist/types', {
   tsconfig: './tsconfig.json',
   // Skip files that do not need to be processed
   exclude: path => path.includes('/internal/'),
-  // Custom extension mapping strategy
+  // Rewrite resolved external package ids (e.g. subpath -> root entry)
+  mapExternal: ({ name, subModuleName }) => {
+    if (name === 'lodash-es' && subModuleName) {
+      return `lodash-es/${subModuleName}`;
+    }
+
+    return name;
+  },
+  // Custom extension mapping strategy for import specifiers and file renaming
   mapExtension: ({ extname, importer }) => {
+    // Import specifier rewrite stage
     if (importer && extname === '.ts') {
       return '.js';
     }
 
+    // File rename stage: *.ts -> *.js, *.cts -> *.cjs, *.mts -> *.mjs by default
     return extname;
   }
 });
 ```
 
-`resolvePaths` returns `Promise<Set<string>>`, and the set contains all files that were actually changed.
+## API
+
+### `resolvePaths(root, options?)`
+
+Returns `Promise<Set<string>>`; the set contains files whose content was rewritten or that were renamed due to extension mapping.
+
+#### `options.tsconfig`
+
+- Type: `string | TsConfig`
+- Default: `'tsconfig.json'`
+- Supports either a tsconfig path or an inline object that includes `compilerOptions.paths` and `compilerOptions.rootDir`.
+
+#### `options.mapExternal`
+
+- Type: `(context: MapExternalContext) => string`
+- Default: identity mapping (`name => name`)
+- Called when a specifier resolves to an external package.
+- `context` includes package metadata from TypeScript (`name`, `subModuleName`, `version`, etc.) and `importer`.
+
+#### `options.mapExtension`
+
+- Type: `(context: MapExtensionContext) => string`
+- Default mapping:
+  - `.ts` / `.tsx` / `.jsx` -> `.js`
+  - `.cts` -> `.cjs`
+  - `.mts` -> `.mjs`
+- Called in two places:
+  - while rewriting import/export specifiers (`context.importer` is defined)
+  - while renaming declaration output files (`context.importer` is undefined)
 
 [npm-image]: https://img.shields.io/npm/v/dts-paths?style=flat-square
 [npm-url]: https://www.npmjs.org/package/dts-paths
