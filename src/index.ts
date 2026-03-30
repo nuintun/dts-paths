@@ -2,11 +2,6 @@
  * @module index
  */
 
-import ts from 'typescript';
-import { rename } from 'node:fs/promises';
-import { scanFiles } from './fs';
-import { createModuleResolver, getCompilerOptions } from './compiler';
-import { rewriteSpecifiersInFile } from './rewriter';
 import {
   DEFAULT_EXCLUDE,
   DEFAULT_MAP_EXTENSION,
@@ -14,27 +9,30 @@ import {
   DEFAULT_ON_RESOLVE_FAILED,
   IMPORTER_EXT_RE
 } from './shared';
+import ts from 'typescript';
+import { scanFiles } from './fs';
 import { Options } from './types';
+import { rename } from 'node:fs/promises';
+import { rewriteSpecifiersInFile } from './rewriter';
+import { createModuleResolver, getCompilerOptions } from './compiler';
 
 // Re-export types
 export type {
-  Filter,
-  MapExternalContext,
-  MapExtensionContext,
-  OnResolveFailedContext,
-  MapExternal,
   MapExtension,
+  MapExtensionContext,
+  MapExternal,
+  MapExternalContext,
   OnResolveFailed,
-  TsConfig,
-  Options
+  OnResolveFailedContext,
+  Options,
+  TsConfig
 } from './types';
+export type { Filter } from './fs';
 
 /**
  * @function resolvePaths
- * @description Main entry point - resolves and updates module paths in TypeScript declaration files
- * @param {string} root Root directory to scan for TypeScript files
- * @param {Options} [options] Configuration options object
- * @returns {Promise<Set<string>>} A Set containing file paths that were modified
+ * @param root The root directory to scan for TypeScript files
+ * @param options The options for resolving paths
  */
 export async function resolvePaths(
   root: string,

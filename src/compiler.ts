@@ -1,9 +1,22 @@
+/**
+ * @module compiler
+ */
+
 import ts from 'typescript';
-import { dirname, resolve } from 'node:path';
 import { TsConfig } from './types';
+import { dirname, resolve } from 'node:path';
 import { isString, throwIfDiagnostics } from './shared';
 
-export function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
+/**
+ * @function getCompilerOptions
+ * @description Loads and parses TypeScript compiler options from a tsconfig file or TsConfig object
+ * @param host The TypeScript system host, typically `ts.sys`
+ * @param tsconfig Path to tsconfig file or TsConfig object
+ */
+export function getCompilerOptions(
+  host: ts.System,
+  tsconfig: string | TsConfig
+): ts.CompilerOptions {
   let config: TsConfig;
   let basePath: string;
 
@@ -31,10 +44,22 @@ export function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig)
   return options;
 }
 
-export type ResolveModule = (moduleName: string, containingFile: string) =>
-  | ts.ResolvedModuleFull
-  | undefined;
+/**
+ * @typedef ResolveModule
+ * @description A function that resolves a module name to a resolved module
+ * @param moduleName The module name to resolve
+ * @param containingFile The file that contains the module reference
+ */
+export interface ResolveModule {
+  (moduleName: string, containingFile: string): ts.ResolvedModuleFull | undefined;
+}
 
+/**
+ * @function createModuleResolver
+ * @description Creates a module resolver function
+ * @param host The TypeScript system host, typically `ts.sys`
+ * @param compilerOptions Compiler options to use for module resolution
+ */
 export function createModuleResolver(
   host: ts.System,
   compilerOptions: ts.CompilerOptions
