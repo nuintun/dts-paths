@@ -137,8 +137,8 @@ test('onResolveFailed should be called for unresolved module specifiers', async 
     await rm(root, { recursive: true, force: true });
   });
 
-  const unresolvedImporter = join(dts, 'unresolved.d.ts');
   const unresolvedName = './missing';
+  const unresolvedImporter = join(dts, 'unresolved.d.ts');
   const failed: Array<{ name: string; importer: string }> = [];
 
   await writeFile(unresolvedImporter, `export * from '${unresolvedName}';\n`);
