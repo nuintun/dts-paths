@@ -221,7 +221,7 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
  * @param {string} context.importer File path that imports the unresolved module
  */
 const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ name, importer }) => {
-  throw new Error(`[dts-paths] Failed to resolve "${name}" from "${importer}".`);
+  throw new Error(`failed to resolve '${name}' from '${importer}'`);
 };
 
 /**
@@ -517,7 +517,7 @@ export async function resolvePaths(
   root: string,
   {
     exclude = DEFAULT_EXCLUDE,
-    tsconfig = 'tsconfig.json',
+    tsconfig = './tsconfig.json',
     mapExternal = DEFAULT_MAP_EXTERNAL,
     mapExtension = DEFAULT_MAP_EXTENSION,
     onResolveFailed = DEFAULT_ON_RESOLVE_FAILED
