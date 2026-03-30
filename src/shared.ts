@@ -5,7 +5,7 @@
 import ts from 'typescript';
 import { Filter } from './fs';
 import { dirname, relative } from 'node:path';
-import { MapExtension, MapExternal, MapExternalContext, OnResolveFailed } from './types';
+import { MapExtension, MapSpecifier, MapSpecifierContext, OnResolveFailed } from './types';
 
 // Extension mapping table
 const EXTENSION_MAP: Record<string, string> = {
@@ -25,8 +25,8 @@ export const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 // Default filter function
 export const DEFAULT_EXCLUDE: Filter = () => false;
 
-// Default external mapping function
-export const DEFAULT_MAP_EXTERNAL: MapExternal = ({ name }: MapExternalContext) => {
+// Default specifier mapping function
+export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ name }: MapSpecifierContext) => {
   return name;
 };
 

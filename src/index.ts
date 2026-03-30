@@ -5,7 +5,7 @@
 import {
   DEFAULT_EXCLUDE,
   DEFAULT_MAP_EXTENSION,
-  DEFAULT_MAP_EXTERNAL,
+  DEFAULT_MAP_SPECIFIER,
   DEFAULT_ON_RESOLVE_FAILED,
   IMPORTER_EXT_RE
 } from './shared';
@@ -20,8 +20,8 @@ import { createModuleResolver, getCompilerOptions } from './compiler';
 export type {
   MapExtension,
   MapExtensionContext,
-  MapExternal,
-  MapExternalContext,
+  MapSpecifier,
+  MapSpecifierContext,
   OnResolveFailed,
   OnResolveFailedContext,
   Options,
@@ -39,7 +39,7 @@ export async function resolvePaths(
   {
     exclude = DEFAULT_EXCLUDE,
     tsconfig = './tsconfig.json',
-    mapExternal = DEFAULT_MAP_EXTERNAL,
+    mapSpecifier = DEFAULT_MAP_SPECIFIER,
     mapExtension = DEFAULT_MAP_EXTENSION,
     onResolveFailed = DEFAULT_ON_RESOLVE_FAILED
   }: Options = {}
@@ -58,7 +58,7 @@ export async function resolvePaths(
         await rewriteSpecifiersInFile(
           file,
           resolveModule,
-          mapExternal,
+          mapSpecifier,
           mapExtension,
           onResolveFailed
         )

@@ -7,7 +7,7 @@ import { toRelative } from './shared';
 import MagicString from 'magic-string';
 import { ResolveModule } from './compiler';
 import { readFile, writeFile } from 'node:fs/promises';
-import { MapExtension, MapExternal, OnResolveFailed } from './types';
+import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
 /**
  * @function transformFile
@@ -15,7 +15,7 @@ import { MapExtension, MapExternal, OnResolveFailed } from './types';
  * @param path The file path of the TypeScript file to transform
  * @param content The content of the TypeScript file
  * @param resolveModule A function that resolves module names to resolved modules
- * @param mapExternal A function that maps external module names
+ * @param mapSpecifier A function that maps module specifiers
  * @param mapExtension A function that maps file extensions based on the importer
  * @param onResolveFailed A callback function that is called when module resolution fails
  */
@@ -23,7 +23,7 @@ function transformFile(
   path: string,
   content: string,
   resolveModule: ResolveModule,
-  mapExternal: MapExternal,
+  mapSpecifier: MapSpecifier,
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ) {
@@ -43,13 +43,14 @@ function transformFile(
    */
   function rewriteSpecifier(specifier: ts.StringLiteral) {
     const moduleName = specifier.text;
-    const resolved = resolveModule(moduleName, path);
+    const mappedModuleName = mapSpecifier({ name: moduleName, importer: path });
+    const resolved = resolveModule(mappedModuleName, path);
 
     if (resolved) {
       let resolvedModuleName: string;
 
       if (resolved.isExternalLibraryImport) {
-        resolvedModuleName = mapExternal({ name: moduleName, importer: path });
+        resolvedModuleName = mappedModuleName;
       } else {
         resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
       }
@@ -105,14 +106,14 @@ function transformFile(
  * @description Rewrites module specifiers in a TypeScript file
  * @param path The file path of the TypeScript file to rewrite
  * @param resolveModule A function that resolves module names to resolved modules
- * @param mapExternal A function that maps external module names
+ * @param mapSpecifier A function that maps module specifiers
  * @param mapExtension A function that maps file extensions based on the importer
  * @param onResolveFailed A callback function that is called when module resolution fails
  */
 export async function rewriteSpecifiersInFile(
   path: string,
   resolveModule: ResolveModule,
-  mapExternal: MapExternal,
+  mapSpecifier: MapSpecifier,
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ): Promise<boolean> {
@@ -121,7 +122,7 @@ export async function rewriteSpecifiersInFile(
     path,
     content,
     resolveModule,
-    mapExternal,
+    mapSpecifier,
     mapExtension,
     onResolveFailed
   );

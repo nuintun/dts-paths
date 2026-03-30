@@ -6,10 +6,10 @@ import ts from 'typescript';
 import { Filter } from './fs';
 
 /**
- * @interface MapExternalContext
- * @description Context for mapping external module names
+ * @interface MapSpecifierContext
+ * @description Context for mapping module specifiers
  */
-export interface MapExternalContext {
+export interface MapSpecifierContext {
   /**
    * @property name
    * @description The original module name being resolved
@@ -62,14 +62,14 @@ export interface OnResolveFailedContext {
 }
 
 /**
- * @interface MapExternal
- * @description A function that maps external module names
+ * @interface MapSpecifier
+ * @description A function that maps module specifiers
  */
-export interface MapExternal {
+export interface MapSpecifier {
   /**
-   * @param context The context for mapping the external module name
+   * @param context The context for mapping the module specifier
    */
-  (context: MapExternalContext): string;
+  (context: MapSpecifierContext): string;
 }
 
 /**
@@ -127,10 +127,10 @@ export interface Options {
    */
   tsconfig?: string | TsConfig;
   /**
-   * @property [mapExternal]
-   * @description A function to map external module names
+   * @property [mapSpecifier]
+   * @description A function to map module specifiers
    */
-  mapExternal?: MapExternal;
+  mapSpecifier?: MapSpecifier;
   /**
    * @property [mapExtension]
    * @description A function to map file extensions based on the importer
