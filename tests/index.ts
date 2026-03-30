@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { resolvePaths } from 'dts-paths';
 import { join, relative, resolve } from 'node:path';
+import type { OnResolveFailedContext } from 'dts-paths';
 import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 
 interface Workspace {
@@ -137,11 +138,11 @@ test('onResolveFailed should be called for unresolved module specifiers', async 
     await rm(root, { recursive: true, force: true });
   });
 
-  const unresolvedName = './missing';
+  const unresolvedSpecifier = './missing';
+  const failed: OnResolveFailedContext[] = [];
   const unresolvedImporter = join(dts, 'unresolved.d.ts');
-  const failed: Array<{ name: string; importer: string }> = [];
 
-  await writeFile(unresolvedImporter, `export * from '${unresolvedName}';\n`);
+  await writeFile(unresolvedImporter, `export * from '${unresolvedSpecifier}';\n`);
 
   await resolvePaths(dts, {
     tsconfig: createTsConfig(dts),
@@ -152,7 +153,7 @@ test('onResolveFailed should be called for unresolved module specifiers', async 
 
   assert.deepEqual(failed, [
     {
-      name: unresolvedName,
+      specifier: unresolvedSpecifier,
       importer: unresolvedImporter
     }
   ]);

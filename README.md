@@ -45,12 +45,12 @@ await resolvePaths('./dist/types', {
   // Skip files that do not need to be processed
   exclude: path => path.includes('/internal/'),
   // Rewrite module specifiers before resolving
-  mapSpecifier: ({ name, importer }) => {
-    if (importer.endsWith('legacy.d.ts') && name === 'lodash-es') {
+  mapSpecifier: ({ specifier, importer }) => {
+    if (importer.endsWith('legacy.d.ts') && specifier === 'lodash-es') {
       return 'lodash';
     }
 
-    return name;
+    return specifier;
   },
   // Custom extension mapping strategy for import specifiers and file renaming
   mapExtension: ({ extname, importer }) => {
@@ -63,8 +63,8 @@ await resolvePaths('./dist/types', {
     return extname;
   },
   // Called when a specifier cannot be resolved
-  onResolveFailed: ({ name, importer }) => {
-    console.warn(`[custom] failed to resolve "${name}" from "${importer}"`);
+  onResolveFailed: ({ specifier, importer }) => {
+    console.warn(`[dts-paths] failed to resolve '${specifier}' from '${importer}'`);
   }
 });
 ```
@@ -84,10 +84,10 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 #### `options.mapSpecifier`
 
 - Type: `(context: MapSpecifierContext) => string`
-- Default: identity mapping (`name => name`)
+- Default: identity mapping (`specifier => specifier`)
 - Called before resolving a module specifier.
 - `context` contains:
-  - `name`: module specifier from the original import/export
+  - `specifier`: module specifier from the original import/export
   - `importer`: file path of the declaration file that imports the package
 
 #### `options.mapExtension`
@@ -107,7 +107,7 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Default: throws an `Error`
 - Called when a module specifier cannot be resolved.
 - `context` contains:
-  - `name`: unresolved module specifier from the original import/export
+  - `specifier`: unresolved module specifier from the original import/export
   - `importer`: file path of the declaration file that imports/exports the unresolved specifier
 
 [npm-image]: https://img.shields.io/npm/v/dts-paths?style=flat-square

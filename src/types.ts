@@ -11,10 +11,10 @@ import { Filter } from './fs';
  */
 export interface MapSpecifierContext {
   /**
-   * @property name
-   * @description The original module name being resolved
+   * @property specifier
+   * @description The original module specifier being resolved
    */
-  name: string;
+  specifier: string;
   /**
    * @property importer
    * @description The file path that is importing the module
@@ -50,10 +50,10 @@ export interface MapExtensionContext {
  */
 export interface OnResolveFailedContext {
   /**
-   * @property name
-   * @description Module specifier that failed to resolve
+   * @property specifier
+   * @description The module specifier that failed to resolve
    */
-  name: string;
+  specifier: string;
   /**
    * @property importer
    * @description The file path that is importing the module

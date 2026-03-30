@@ -16,6 +16,9 @@ const EXTENSION_MAP: Record<string, string> = {
   '.mts': '.mjs'
 };
 
+// Regular expression to scan declaration files
+export const SCAN_DTS_RE = /\.d\.[cm]?ts$/i;
+
 // Regular expression to match module file extensions
 export const IMPORTER_EXT_RE = /\.[cm]?ts$/i;
 
@@ -26,8 +29,8 @@ export const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 export const DEFAULT_EXCLUDE: Filter = () => false;
 
 // Default specifier mapping function
-export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ name }) => {
-  return name;
+export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ specifier }) => {
+  return specifier;
 };
 
 // Default extension mapping function
@@ -40,8 +43,8 @@ export const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
 };
 
 // Default failed resolution handler
-export const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ name, importer }) => {
-  throw new Error(`failed to resolve '${name}' from '${importer}'`);
+export const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ specifier, importer }) => {
+  throw new Error(`failed to resolve '${specifier}' from '${importer}'`);
 };
 
 /**

@@ -39,31 +39,27 @@ function transformFile(
   /**
    * @function rewriteSpecifier
    * @description Rewrites a module specifier if it can be resolved
-   * @param specifier The string literal representing the module specifier
+   * @param literal The string literal representing the module specifier
    */
-  function rewriteSpecifier(specifier: ts.StringLiteral) {
-    const moduleName = specifier.text;
-    const mappedModuleName = mapSpecifier({ name: moduleName, importer: path });
-    const resolved = resolveModule(mappedModuleName, path);
+  function rewriteSpecifier(literal: ts.StringLiteral) {
+    const specifier = literal.text;
+    const mappedSpecifier = mapSpecifier({ specifier, importer: path });
+    const resolved = resolveModule(mappedSpecifier, path);
 
     if (resolved) {
-      let resolvedModuleName: string;
+      let resolvedSpecifier: string;
 
       if (resolved.isExternalLibraryImport) {
-        resolvedModuleName = mappedModuleName;
+        resolvedSpecifier = mappedSpecifier;
       } else {
-        resolvedModuleName = toRelative(path, resolved.resolvedFileName, mapExtension);
+        resolvedSpecifier = toRelative(path, resolved.resolvedFileName, mapExtension);
       }
 
-      if (resolvedModuleName !== moduleName) {
-        source.overwrite(
-          specifier.getStart(sourceFile) + 1,
-          specifier.getEnd() - 1,
-          resolvedModuleName
-        );
+      if (resolvedSpecifier !== specifier) {
+        source.overwrite(literal.getStart(sourceFile) + 1, literal.getEnd() - 1, resolvedSpecifier);
       }
     } else {
-      onResolveFailed({ name: moduleName, importer: path });
+      onResolveFailed({ specifier, importer: path });
     }
   }
 
@@ -73,24 +69,24 @@ function transformFile(
    * @param node The current AST node being visited
    */
   function visit(node: ts.Node) {
-    let specifier: ts.Node | undefined;
+    let literal: ts.Node | undefined;
 
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
       // import/export ... from 'module'
-      specifier = node.moduleSpecifier;
+      literal = node.moduleSpecifier;
     } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
       // import('...')
-      specifier = node.argument.literal;
+      literal = node.argument.literal;
     } else if (
       ts.isImportEqualsDeclaration(node) &&
       ts.isExternalModuleReference(node.moduleReference)
     ) {
       // import ... = require('...')
-      specifier = node.moduleReference.expression;
+      literal = node.moduleReference.expression;
     }
 
-    if (specifier && ts.isStringLiteral(specifier)) {
-      rewriteSpecifier(specifier);
+    if (literal && ts.isStringLiteral(literal)) {
+      rewriteSpecifier(literal);
     }
 
     ts.forEachChild(node, visit);

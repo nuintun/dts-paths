@@ -7,7 +7,8 @@ import {
   DEFAULT_MAP_EXTENSION,
   DEFAULT_MAP_SPECIFIER,
   DEFAULT_ON_RESOLVE_FAILED,
-  IMPORTER_EXT_RE
+  IMPORTER_EXT_RE,
+  SCAN_DTS_RE
 } from './shared';
 import ts from 'typescript';
 import { scanFiles } from './fs';
@@ -16,7 +17,6 @@ import { rename } from 'node:fs/promises';
 import { rewriteSpecifiersInFile } from './rewriter';
 import { createModuleResolver, getCompilerOptions } from './compiler';
 
-// Re-export types
 export type {
   MapExtension,
   MapExtensionContext,
@@ -50,7 +50,7 @@ export async function resolvePaths(
   const rewriteTasks: Promise<void>[] = [];
   const compilerOptions = getCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
-  const files = scanFiles(root, path => IMPORTER_EXT_RE.test(path) && !exclude(path));
+  const files = scanFiles(root, path => SCAN_DTS_RE.test(path) && !exclude(path));
 
   for await (const file of files) {
     const rewriteTask = async () => {
