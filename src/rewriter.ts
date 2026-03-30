@@ -14,16 +14,16 @@ import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
  * @description Transforms a TypeScript file by rewriting its module specifiers
  * @param path The file path of the TypeScript file to transform
  * @param content The content of the TypeScript file
- * @param resolveModule A function that resolves module names to resolved modules
  * @param mapSpecifier A function that maps module specifiers
+ * @param resolveModule A function that resolves module names to resolved modules
  * @param mapExtension A function that maps file extensions based on the importer
  * @param onResolveFailed A callback function that is called when module resolution fails
  */
 function transformFile(
   path: string,
   content: string,
-  resolveModule: ResolveModule,
   mapSpecifier: MapSpecifier,
+  resolveModule: ResolveModule,
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ) {
@@ -105,15 +105,15 @@ function transformFile(
  * @function rewriteSpecifiersInFile
  * @description Rewrites module specifiers in a TypeScript file
  * @param path The file path of the TypeScript file to rewrite
- * @param resolveModule A function that resolves module names to resolved modules
  * @param mapSpecifier A function that maps module specifiers
+ * @param resolveModule A function that resolves module names to resolved modules
  * @param mapExtension A function that maps file extensions based on the importer
  * @param onResolveFailed A callback function that is called when module resolution fails
  */
 export async function rewriteSpecifiersInFile(
   path: string,
-  resolveModule: ResolveModule,
   mapSpecifier: MapSpecifier,
+  resolveModule: ResolveModule,
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ): Promise<boolean> {
@@ -121,8 +121,8 @@ export async function rewriteSpecifiersInFile(
   const source = transformFile(
     path,
     content,
-    resolveModule,
     mapSpecifier,
+    resolveModule,
     mapExtension,
     onResolveFailed
   );

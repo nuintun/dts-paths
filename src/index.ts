@@ -57,8 +57,8 @@ export async function resolvePaths(
       if (
         await rewriteSpecifiersInFile(
           file,
-          resolveModule,
           mapSpecifier,
+          resolveModule,
           mapExtension,
           onResolveFailed
         )
