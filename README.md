@@ -61,6 +61,10 @@ await resolvePaths('./dist/types', {
 
     // File rename stage: *.ts -> *.js, *.cts -> *.cjs, *.mts -> *.mjs by default
     return extname;
+  },
+  // Called when a specifier cannot be resolved
+  onResolveFailed: ({ name, importer }) => {
+    console.warn(`[custom] failed to resolve "${name}" from "${importer}"`);
   }
 });
 ```
@@ -96,6 +100,15 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Called in two places:
   - while rewriting import/export specifiers (`context.importer` is defined)
   - while renaming declaration output files (`context.importer` is undefined)
+
+#### `options.onResolveFailed`
+
+- Type: `(context: OnResolveFailedContext) => void`
+- Default: throws an `Error`
+- Called when a module specifier cannot be resolved.
+- `context` contains:
+  - `name`: unresolved module specifier from the original import/export
+  - `importer`: file path of the declaration file that imports/exports the unresolved specifier
 
 [npm-image]: https://img.shields.io/npm/v/dts-paths?style=flat-square
 [npm-url]: https://www.npmjs.org/package/dts-paths
