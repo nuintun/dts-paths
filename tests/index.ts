@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { resolvePaths } from 'dts-paths';
 import { join, relative, resolve } from 'node:path';
-import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 
 interface Workspace {
   dts: string;
@@ -128,4 +128,32 @@ test('rewrite should be idempotent on copied dts directory', async test => {
 
   assert.ok(first.size > 0);
   assert.equal(second.size, 0);
+});
+
+test('onResolveFailed should be called for unresolved module specifiers', async test => {
+  const { dts, root } = await createWorkspace('dts-paths-on-resolve-failed-');
+
+  test.after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const unresolvedImporter = join(dts, 'unresolved.d.ts');
+  const unresolvedName = './missing';
+  const failed: Array<{ name: string; importer: string }> = [];
+
+  await writeFile(unresolvedImporter, `export * from '${unresolvedName}';\n`);
+
+  await resolvePaths(dts, {
+    tsconfig: createTsConfig(dts),
+    onResolveFailed: context => {
+      failed.push(context);
+    }
+  });
+
+  assert.deepEqual(failed, [
+    {
+      name: unresolvedName,
+      importer: unresolvedImporter
+    }
+  ]);
 });
