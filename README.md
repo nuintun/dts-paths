@@ -73,7 +73,7 @@ await resolvePaths('./dist/types', {
 
 ### `resolvePaths(root, options?)`
 
-Returns `Promise<Set<string>>`; the set contains files whose content was rewritten or that were renamed due to extension mapping.
+Returns `Promise<Set<string>>`; the set contains files whose content was rewritten.
 
 #### `options.tsconfig`
 
