@@ -26,7 +26,7 @@ export const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 export const DEFAULT_EXCLUDE: Filter = () => false;
 
 // Default specifier mapping function
-export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ name }: MapSpecifierContext) => {
+export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ name }) => {
   return name;
 };
 
