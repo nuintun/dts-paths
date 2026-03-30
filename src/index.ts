@@ -51,6 +51,23 @@ export interface MapExtensionContext {
 }
 
 /**
+ * @interface OnResolveFailedContext
+ * @description Context for unresolved module specifiers during module resolution
+ */
+export interface OnResolveFailedContext {
+  /**
+   * @property {string} name
+   * @description Module specifier that failed to resolve
+   */
+  name: string;
+  /**
+   * @property {string} importer
+   * @description File path that imports the unresolved module
+   */
+  importer: string;
+}
+
+/**
  * @interface MapExternal
  * @description Function for mapping external library names during module resolution
  * @param {MapExternalContext} context Context containing external library information
@@ -68,6 +85,15 @@ export interface MapExternal {
  */
 export interface MapExtension {
   (context: MapExtensionContext): string;
+}
+
+/**
+ * @interface OnResolveFailed
+ * @description Function called when a module specifier cannot be resolved
+ * @param {OnResolveFailedContext} context Context containing unresolved module information
+ */
+export interface OnResolveFailed {
+  (context: OnResolveFailedContext): void;
 }
 
 /**
@@ -115,6 +141,11 @@ export interface Options {
    * @description Function that maps TypeScript/JavaScript extensions to compiled output extensions
    */
   mapExtension?: MapExtension;
+  /**
+   * @property {OnResolveFailed} [onResolveFailed]
+   * @description Function called when a module specifier fails to resolve
+   */
+  onResolveFailed?: OnResolveFailed;
 }
 
 /**
@@ -180,6 +211,17 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   }
 
   return extname;
+};
+
+/**
+ * @constant {OnResolveFailed} DEFAULT_ON_RESOLVE_FAILED
+ * @description Default unresolved module handler that warns using console.warn
+ * @param {OnResolveFailedContext} context Context containing unresolved module information
+ * @param {string} context.name Unresolved module specifier
+ * @param {string} context.importer File path that imports the unresolved module
+ */
+const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ name, importer }) => {
+  console.warn(`[dts-paths] Failed to resolve "${name}" from "${importer}".`);
 };
 
 /**
@@ -333,7 +375,8 @@ function transformFile(
   content: string,
   resolveModule: ResolveModule,
   mapExternal: MapExternal,
-  mapExtension: MapExtension
+  mapExtension: MapExtension,
+  onResolveFailed: OnResolveFailed
 ) {
   // Parse source file into AST
   const sourceFile = ts.createSourceFile(
@@ -374,6 +417,10 @@ function transformFile(
           resolvedModuleName
         );
       }
+    }
+    // Notify unresolved module specifier
+    else {
+      onResolveFailed({ name: moduleName, importer: path });
     }
   }
 
@@ -429,12 +476,20 @@ async function rewriteSpecifiersInFile(
   path: string,
   resolveModule: ResolveModule,
   mapExternal: MapExternal,
-  mapExtension: MapExtension
+  mapExtension: MapExtension,
+  onResolveFailed: OnResolveFailed
 ) {
   // Read file content
   const content = await readFile(path, 'utf8');
   // Transform the file content
-  const source = transformFile(path, content, resolveModule, mapExternal, mapExtension);
+  const source = transformFile(
+    path,
+    content,
+    resolveModule,
+    mapExternal,
+    mapExtension,
+    onResolveFailed
+  );
 
   // Write back only if changes were made
   if (source.hasChanged()) {
@@ -455,6 +510,7 @@ async function rewriteSpecifiersInFile(
  * @param {string | TsConfig} [options.tsconfig='tsconfig.json'] TypeScript configuration source
  * @param {MapExternal} [options.mapExternal=DEFAULT_MAP_EXTERNAL] Function to map external library names
  * @param {MapExtension} [options.mapExtension=DEFAULT_MAP_EXTENSION] Function to map file extensions during path resolution
+ * @param {OnResolveFailed} [options.onResolveFailed=DEFAULT_ON_RESOLVE_FAILED] Function called when a module specifier fails to resolve
  * @returns {Promise<Set<string>>} A Set containing file paths that were modified
  */
 export async function resolvePaths(
@@ -463,7 +519,8 @@ export async function resolvePaths(
     exclude = DEFAULT_EXCLUDE,
     tsconfig = 'tsconfig.json',
     mapExternal = DEFAULT_MAP_EXTERNAL,
-    mapExtension = DEFAULT_MAP_EXTENSION
+    mapExtension = DEFAULT_MAP_EXTENSION,
+    onResolveFailed = DEFAULT_ON_RESOLVE_FAILED
   }: Options = {}
 ): Promise<Set<string>> {
   // TypeScript system host used for config parsing and module resolution.
@@ -490,7 +547,15 @@ export async function resolvePaths(
      */
     const rewriteTask = async () => {
       // Rewrite specifiers and track if file was modified
-      if (await rewriteSpecifiersInFile(file, resolveModule, mapExternal, mapExtension)) {
+      if (
+        await rewriteSpecifiersInFile(
+          file,
+          resolveModule,
+          mapExternal,
+          mapExtension,
+          onResolveFailed
+        )
+      ) {
         changed.add(file);
       }
     };
