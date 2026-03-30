@@ -3,7 +3,7 @@
  */
 
 import {
-  CPUS,
+  DEFAULT_CONCURRENCY,
   DEFAULT_EXCLUDE,
   DEFAULT_MAP_EXTENSION,
   DEFAULT_MAP_SPECIFIER,
@@ -41,6 +41,7 @@ export async function resolvePaths(
   {
     exclude = DEFAULT_EXCLUDE,
     tsconfig = './tsconfig.json',
+    concurrency = DEFAULT_CONCURRENCY,
     mapSpecifier = DEFAULT_MAP_SPECIFIER,
     mapExtension = DEFAULT_MAP_EXTENSION,
     onResolveFailed = DEFAULT_ON_RESOLVE_FAILED
@@ -49,8 +50,8 @@ export async function resolvePaths(
   const host = ts.sys;
   const importers: string[] = [];
   const changed = new Set<string>();
-  const schedule = scheduleTasks(CPUS);
   const rewriteTasks: Promise<void>[] = [];
+  const schedule = scheduleTasks(concurrency);
   const compilerOptions = getCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
   const files = scanFiles(root, path => SCAN_DTS_RE.test(path) && !exclude(path));

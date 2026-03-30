@@ -17,9 +17,6 @@ const EXTENSION_MAP: Record<string, string> = {
   '.mts': '.mjs'
 };
 
-// number of CPU cores for parallel processing
-export const CPUS = cpus().length;
-
 // regular expression to scan declaration files
 export const SCAN_DTS_RE = /\.d\.[cm]?ts$/i;
 
@@ -28,6 +25,9 @@ export const IMPORTER_EXT_RE = /\.[cm]?ts$/i;
 
 // regular expression to match module file extensions in import paths
 export const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
+
+// number of concurrent tasks to run, default to number of CPU cores
+export const DEFAULT_CONCURRENCY = cpus().length;
 
 // default filter function
 export const DEFAULT_EXCLUDE: Filter = () => false;

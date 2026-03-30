@@ -122,6 +122,11 @@ export interface Options {
    */
   exclude?: Filter;
   /**
+   * @property [concurrency]
+   * @description number of concurrent tasks to run
+   */
+  concurrency?: number;
+  /**
    * @property [tsconfig]
    * @description path to the typescript configuration file or configuration options
    */

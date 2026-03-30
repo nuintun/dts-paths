@@ -60,12 +60,14 @@ export async function* scanFiles(
       const { value: stat } = item;
       const path = `${dirname}${stat.name}`;
 
-      if (stat.isFile() && filter(path)) {
-        yield join(root, path);
-      } else if (stat.isDirectory()) {
-        const realpath = join(root, path);
+      if (!stat.isSymbolicLink()) {
+        if (stat.isFile() && filter(path)) {
+          yield join(root, path);
+        } else if (stat.isDirectory()) {
+          const realpath = join(root, path);
 
-        waiting.push([`${path}/`, await read(realpath)]);
+          waiting.push([`${path}/`, await read(realpath)]);
+        }
       }
     }
   }
