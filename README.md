@@ -44,8 +44,8 @@ await resolvePaths('./dist/types', {
   tsconfig: './tsconfig.json',
   // Skip files that do not need to be processed
   exclude: path => path.includes('/internal/'),
-  // Rewrite resolved external package ids (e.g. subpath -> root entry)
-  mapExternal: ({ name, importer }) => {
+  // Rewrite module specifiers before resolving
+  mapSpecifier: ({ name, importer }) => {
     if (importer.endsWith('legacy.d.ts') && name === 'lodash-es') {
       return 'lodash';
     }
@@ -81,13 +81,13 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Default: `'tsconfig.json'`
 - Supports either a tsconfig path or an inline object that includes `compilerOptions.paths` and `compilerOptions.rootDir`.
 
-#### `options.mapExternal`
+#### `options.mapSpecifier`
 
-- Type: `(context: MapExternalContext) => string`
+- Type: `(context: MapSpecifierContext) => string`
 - Default: identity mapping (`name => name`)
-- Called when a specifier resolves to an external package.
+- Called before resolving a module specifier.
 - `context` contains:
-  - `name`: external package id from the original import specifier
+  - `name`: module specifier from the original import/export
   - `importer`: file path of the declaration file that imports the package
 
 #### `options.mapExtension`
