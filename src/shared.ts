@@ -5,7 +5,7 @@
 import ts from 'typescript';
 import { Filter } from './fs';
 import { dirname, relative } from 'node:path';
-import { MapExtension, MapSpecifier, MapSpecifierContext, OnResolveFailed } from './types';
+import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
 // Extension mapping table
 const EXTENSION_MAP: Record<string, string> = {
