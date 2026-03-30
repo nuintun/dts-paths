@@ -104,7 +104,7 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 #### `options.onResolveFailed`
 
 - Type: `(context: OnResolveFailedContext) => void`
-- Default: logs a warning via `console.warn`
+- Default: throws an `Error`
 - Called when a module specifier cannot be resolved.
 - `context` contains:
   - `name`: unresolved module specifier from the original import/export

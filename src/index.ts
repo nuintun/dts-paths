@@ -215,13 +215,13 @@ const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
 
 /**
  * @constant {OnResolveFailed} DEFAULT_ON_RESOLVE_FAILED
- * @description Default unresolved module handler that warns using console.warn
+ * @description Default unresolved module handler that throws an error
  * @param {OnResolveFailedContext} context Context containing unresolved module information
  * @param {string} context.name Unresolved module specifier
  * @param {string} context.importer File path that imports the unresolved module
  */
 const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ name, importer }) => {
-  console.warn(`[dts-paths] Failed to resolve "${name}" from "${importer}".`);
+  throw new Error(`[dts-paths] Failed to resolve "${name}" from "${importer}".`);
 };
 
 /**
