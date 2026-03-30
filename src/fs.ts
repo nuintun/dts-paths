@@ -56,11 +56,12 @@ export async function* scanFiles(
     if (item.done) {
       current = waiting.pop();
     } else {
-      const [dirname] = current;
       const { value: stat } = item;
-      const path = `${dirname}${stat.name}`;
 
       if (!stat.isSymbolicLink()) {
+        const [dirname] = current;
+        const path = `${dirname}${stat.name}`;
+
         if (stat.isFile() && filter(path)) {
           yield join(root, path);
         } else if (stat.isDirectory()) {
