@@ -7,138 +7,138 @@ import { Filter } from './fs';
 
 /**
  * @interface MapSpecifierContext
- * @description Context for mapping module specifiers
+ * @description context for mapping module specifiers
  */
 export interface MapSpecifierContext {
   /**
    * @property specifier
-   * @description The original module specifier being resolved
+   * @description the original module specifier being resolved
    */
   specifier: string;
   /**
    * @property importer
-   * @description The file path that is importing the module
+   * @description the file path that is importing the module
    */
   importer: string;
 }
 
 /**
  * @interface MapExtensionContext
- * @description Context for mapping file extensions
+ * @description context for mapping file extensions
  */
 export interface MapExtensionContext {
   /**
    * @property path
-   * @description The resolved file path being processed
+   * @description the resolved file path being processed
    */
   path: string;
   /**
    * @property extname
-   * @description The original file extension of the resolved module
+   * @description the original file extension of the resolved module
    */
   extname: string;
   /**
    * @property [importer]
-   * @description The file path that is importing the module
+   * @description the file path that is importing the module
    */
   importer?: string;
 }
 
 /**
  * @interface OnResolveFailedContext
- * @description Context for handling failed module resolution
+ * @description context for handling failed module resolution
  */
 export interface OnResolveFailedContext {
   /**
    * @property specifier
-   * @description The module specifier that failed to resolve
+   * @description the module specifier that failed to resolve
    */
   specifier: string;
   /**
    * @property importer
-   * @description The file path that is importing the module
+   * @description the file path that is importing the module
    */
   importer: string;
 }
 
 /**
  * @interface MapSpecifier
- * @description A function that maps module specifiers
+ * @description a function that maps module specifiers
  */
 export interface MapSpecifier {
   /**
-   * @param context The context for mapping the module specifier
+   * @param context the context for mapping the module specifier
    */
   (context: MapSpecifierContext): string;
 }
 
 /**
  * @interface MapExtension
- * @description A function that maps file extensions based on the importer
+ * @description a function that maps file extensions based on the importer
  */
 export interface MapExtension {
   /**
-   * @param context The context for mapping the file extension
+   * @param context the context for mapping the file extension
    */
   (context: MapExtensionContext): string;
 }
 
 /**
  * @interface OnResolveFailed
- * @description A callback function that is called when module resolution fails
+ * @description a callback function that is called when module resolution fails
  */
 export interface OnResolveFailed {
   /**
-   * @param context The context for handling the failed module resolution
+   * @param context the context for handling the failed module resolution
    */
   (context: OnResolveFailedContext): void;
 }
 
 /**
  * @interface TsConfig
- * @description TypeScript configuration options
+ * @description typescript configuration options
  */
 export interface TsConfig {
   /**
    * @property [extends]
-   * @description Path(s) to base tsconfig files
+   * @description path(s) to base tsconfig files
    */
   extends?: string | string[];
   /**
    * @property [compilerOptions]
-   * @description Overrides for TypeScript compiler options
+   * @description overrides for typescript compiler options
    */
   compilerOptions?: Pick<ts.CompilerOptions, 'paths' | 'rootDir'>;
 }
 
 /**
  * @interface Options
- * @description Options for the resolvePaths function
+ * @description options for the resolvePaths function
  */
 export interface Options {
   /**
    * @property [exclude]
-   * @description A filter function to exclude certain file paths from processing
+   * @description a filter function to exclude certain file paths from processing
    */
   exclude?: Filter;
   /**
    * @property [tsconfig]
-   * @description Path to the TypeScript configuration file or configuration options
+   * @description path to the typescript configuration file or configuration options
    */
   tsconfig?: string | TsConfig;
   /**
    * @property [mapSpecifier]
-   * @description A function to map module specifiers
+   * @description a function to map module specifiers
    */
   mapSpecifier?: MapSpecifier;
   /**
    * @property [mapExtension]
-   * @description A function to map file extensions based on the importer
+   * @description a function to map file extensions based on the importer
    */
   mapExtension?: MapExtension;
   /**
    * @property [onResolveFailed]
-   * @description A callback function that is called when module resolution fails
+   * @description a callback function that is called when module resolution fails
    */
   onResolveFailed?: OnResolveFailed;
 }

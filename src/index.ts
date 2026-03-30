@@ -3,6 +3,7 @@
  */
 
 import {
+  CPUS,
   DEFAULT_EXCLUDE,
   DEFAULT_MAP_EXTENSION,
   DEFAULT_MAP_SPECIFIER,
@@ -13,6 +14,7 @@ import {
 import ts from 'typescript';
 import { scanFiles } from './fs';
 import { Options } from './types';
+import scheduleTasks from 'p-limit';
 import { rename } from 'node:fs/promises';
 import { rewriteSpecifiersInFile } from './rewriter';
 import { createModuleResolver, getCompilerOptions } from './compiler';
@@ -31,8 +33,8 @@ export type { Filter } from './fs';
 
 /**
  * @function resolvePaths
- * @param root The root directory to scan for TypeScript files
- * @param options The options for resolving paths
+ * @param root the root directory to scan for typescript files
+ * @param options the options for resolving paths
  */
 export async function resolvePaths(
   root: string,
@@ -47,45 +49,53 @@ export async function resolvePaths(
   const host = ts.sys;
   const importers: string[] = [];
   const changed = new Set<string>();
+  const schedule = scheduleTasks(CPUS);
   const rewriteTasks: Promise<void>[] = [];
   const compilerOptions = getCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
   const files = scanFiles(root, path => SCAN_DTS_RE.test(path) && !exclude(path));
 
   for await (const file of files) {
-    const rewriteTask = async () => {
-      if (
-        await rewriteSpecifiersInFile(
-          file,
-          mapSpecifier,
-          resolveModule,
-          mapExtension,
-          onResolveFailed
-        )
-      ) {
-        changed.add(file);
-      }
-    };
-
+    // collect importers
     importers.push(file);
-    rewriteTasks.push(rewriteTask());
+
+    // rewrite specifiers in parallel
+    rewriteTasks.push(
+      schedule(async () => {
+        if (
+          await rewriteSpecifiersInFile(
+            file,
+            mapSpecifier,
+            resolveModule,
+            mapExtension,
+            onResolveFailed
+          )
+        ) {
+          changed.add(file);
+        }
+      })
+    );
   }
 
+  // wait for all rewrite tasks to complete
   await Promise.all(rewriteTasks);
 
+  // wait for all importer renaming tasks to complete
   await Promise.all(
-    importers.map(async importer => {
-      const path = importer.replace(IMPORTER_EXT_RE, extname => {
-        return mapExtension({ path: importer, extname });
-      });
+    importers.map(importer => {
+      return schedule(async () => {
+        const path = importer.replace(IMPORTER_EXT_RE, extname => {
+          return mapExtension({ path: importer, extname });
+        });
 
-      if (importer !== path) {
-        await rename(importer, path);
+        if (path !== importer) {
+          await rename(importer, path);
 
-        if (changed.delete(importer)) {
-          changed.add(path);
+          if (changed.delete(importer)) {
+            changed.add(path);
+          }
         }
-      }
+      });
     })
   );
 

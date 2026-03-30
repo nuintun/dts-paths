@@ -8,19 +8,19 @@ import { readdir } from 'node:fs/promises';
 
 /**
  * @interface Filter
- * @description A function to filter file paths
+ * @description a function to filter file paths
  */
 export interface Filter {
   /**
-   * @param path The file path to filter
+   * @param path the file path to filter
    */
   (path: string): boolean;
 }
 
 /**
  * @function read
- * @description Read directory entries
- * @param path The directory path to read
+ * @description read directory entries
+ * @param path the directory path to read
  */
 async function read(path: string) {
   const entries = await readdir(path, {
@@ -30,14 +30,14 @@ async function read(path: string) {
   return entries.values();
 }
 
-// Async generator to scan files in a directory recursively
+// async generator to scan files in a directory recursively
 type Waiting = [string, Iterator<Dirent>];
 
 /**
  * @function scanFiles
- * @description Scan files in a directory recursively
- * @param root The root directory to scan for files
- * @param filter A filter function to determine which files to include
+ * @description scan files in a directory recursively
+ * @param root the root directory to scan for files
+ * @param filter a filter function to determine which files to include
  */
 export async function* scanFiles(
   root: string,

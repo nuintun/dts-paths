@@ -4,10 +4,11 @@
 
 import ts from 'typescript';
 import { Filter } from './fs';
+import { cpus } from 'node:os';
 import { dirname, relative } from 'node:path';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
-// Extension mapping table
+// extension mapping table
 const EXTENSION_MAP: Record<string, string> = {
   '.ts': '.js',
   '.jsx': '.js',
@@ -16,24 +17,27 @@ const EXTENSION_MAP: Record<string, string> = {
   '.mts': '.mjs'
 };
 
-// Regular expression to scan declaration files
+// number of CPU cores for parallel processing
+export const CPUS = cpus().length;
+
+// regular expression to scan declaration files
 export const SCAN_DTS_RE = /\.d\.[cm]?ts$/i;
 
-// Regular expression to match module file extensions
+// regular expression to match module file extensions
 export const IMPORTER_EXT_RE = /\.[cm]?ts$/i;
 
-// Regular expression to match module file extensions in import paths
+// regular expression to match module file extensions in import paths
 export const MODULE_EXT_RE = /\.d?(\.(?:[tj]sx|[cm]?[tj]s))$/i;
 
-// Default filter function
+// default filter function
 export const DEFAULT_EXCLUDE: Filter = () => false;
 
-// Default specifier mapping function
+// default specifier mapping function
 export const DEFAULT_MAP_SPECIFIER: MapSpecifier = ({ specifier }) => {
   return specifier;
 };
 
-// Default extension mapping function
+// default extension mapping function
 export const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   if (importer) {
     return EXTENSION_MAP[extname.toLowerCase()] ?? extname;
@@ -42,15 +46,15 @@ export const DEFAULT_MAP_EXTENSION: MapExtension = ({ extname, importer }) => {
   return extname;
 };
 
-// Default failed resolution handler
+// default failed resolution handler
 export const DEFAULT_ON_RESOLVE_FAILED: OnResolveFailed = ({ specifier, importer }) => {
   throw new Error(`failed to resolve '${specifier}' from '${importer}'`);
 };
 
 /**
  * @function isString
- * @description Type guard to check if a value is a string
- * @param value The value to check
+ * @description type guard to check if a value is a string
+ * @param value the value to check
  */
 export function isString(value: unknown): value is string {
   return Object.prototype.toString.call(value) === '[object String]';
@@ -58,9 +62,9 @@ export function isString(value: unknown): value is string {
 
 /**
  * @function throwIfDiagnostics
- * @description Throws an error if diagnostics are present
- * @param host The TypeScript system host, typically `ts.sys`
- * @param diagnostics The diagnostics to check
+ * @description throws an error if diagnostics are present
+ * @param host the typescript system host, typically `ts.sys`
+ * @param diagnostics the diagnostics to check
  */
 export function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
   if (diagnostics.length > 0) {
@@ -76,10 +80,10 @@ export function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Dia
 
 /**
  * @function toRelative
- * @description Converts a path to a relative path
- * @param from The source path
- * @param to The target path
- * @param mapExtension A function that maps file extensions based on the importer
+ * @description converts a path to a relative path
+ * @param from the source path
+ * @param to the target path
+ * @param mapExtension a function that maps file extensions based on the importer
  */
 export function toRelative(from: string, to: string, mapExtension: MapExtension) {
   let path = relative(dirname(from), to);

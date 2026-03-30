@@ -11,13 +11,13 @@ import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
 /**
  * @function transformFile
- * @description Transforms a TypeScript file by rewriting its module specifiers
- * @param path The file path of the TypeScript file to transform
- * @param content The content of the TypeScript file
- * @param mapSpecifier A function that maps module specifiers
- * @param resolveModule A function that resolves module names to resolved modules
- * @param mapExtension A function that maps file extensions based on the importer
- * @param onResolveFailed A callback function that is called when module resolution fails
+ * @description transforms a typescript file by rewriting its module specifiers
+ * @param path the file path of the typescript file to transform
+ * @param content the content of the typescript file
+ * @param mapSpecifier a function that maps module specifiers
+ * @param resolveModule a function that resolves module names to resolved modules
+ * @param mapExtension a function that maps file extensions based on the importer
+ * @param onResolveFailed a callback function that is called when module resolution fails
  */
 function transformFile(
   path: string,
@@ -38,8 +38,8 @@ function transformFile(
 
   /**
    * @function rewriteSpecifier
-   * @description Rewrites a module specifier if it can be resolved
-   * @param literal The string literal representing the module specifier
+   * @description rewrites a module specifier if it can be resolved
+   * @param literal the string literal representing the module specifier
    */
   function rewriteSpecifier(literal: ts.StringLiteral) {
     const specifier = literal.text;
@@ -65,8 +65,8 @@ function transformFile(
 
   /**
    * @function visit
-   * @description Visits each node in the AST and rewrites module specifiers
-   * @param node The current AST node being visited
+   * @description visits each node in the AST and rewrites module specifiers
+   * @param node the current ast node being visited
    */
   function visit(node: ts.Node) {
     let literal: ts.Node | undefined;
@@ -99,12 +99,12 @@ function transformFile(
 
 /**
  * @function rewriteSpecifiersInFile
- * @description Rewrites module specifiers in a TypeScript file
- * @param path The file path of the TypeScript file to rewrite
- * @param mapSpecifier A function that maps module specifiers
- * @param resolveModule A function that resolves module names to resolved modules
- * @param mapExtension A function that maps file extensions based on the importer
- * @param onResolveFailed A callback function that is called when module resolution fails
+ * @description Rewrites module specifiers in a typescript file
+ * @param path the file path of the typescript file to rewrite
+ * @param mapSpecifier a function that maps module specifiers
+ * @param resolveModule a function that resolves module names to resolved modules
+ * @param mapExtension a function that maps file extensions based on the importer
+ * @param onResolveFailed a callback function that is called when module resolution fails
  */
 export async function rewriteSpecifiersInFile(
   path: string,

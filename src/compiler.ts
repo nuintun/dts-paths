@@ -9,9 +9,9 @@ import { isString, throwIfDiagnostics } from './shared';
 
 /**
  * @function getCompilerOptions
- * @description Loads and parses TypeScript compiler options from a tsconfig file or TsConfig object
- * @param host The TypeScript system host, typically `ts.sys`
- * @param tsconfig Path to tsconfig file or TsConfig object
+ * @description loads and parses typescript compiler options
+ * @param host the typescript system host, typically `ts.sys`
+ * @param tsconfig path to tsconfig file or tsconfig object
  */
 export function getCompilerOptions(
   host: ts.System,
@@ -46,9 +46,9 @@ export function getCompilerOptions(
 
 /**
  * @typedef ResolveModule
- * @description A function that resolves a module name to a resolved module
- * @param moduleName The module name to resolve
- * @param containingFile The file that contains the module reference
+ * @description a function that resolves a module name to a resolved module
+ * @param moduleName the module name to resolve
+ * @param containingFile the file that contains the module reference
  */
 export interface ResolveModule {
   (moduleName: string, containingFile: string): ts.ResolvedModuleFull | undefined;
@@ -56,9 +56,9 @@ export interface ResolveModule {
 
 /**
  * @function createModuleResolver
- * @description Creates a module resolver function
- * @param host The TypeScript system host, typically `ts.sys`
- * @param compilerOptions Compiler options to use for module resolution
+ * @description creates a module resolver function
+ * @param host the typescript system host, typically `ts.sys`
+ * @param compilerOptions compiler options to use for module resolution
  */
 export function createModuleResolver(
   host: ts.System,
