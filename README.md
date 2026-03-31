@@ -90,7 +90,7 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 #### `options.concurrency`
 
 - Type: `number`
-- Default: `32`
+- Default: `os.cpus().length`（CPU 核心数）
 - Controls concurrent tasks for directory scanning, specifier rewriting, and output-file renaming.
 
 #### `options.exclude`
@@ -99,6 +99,7 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Default: `() => false`
 - Filters declaration files during scanning.
 - `path` is the relative path (from `root`) built with POSIX separators (for example: `foo/bar.d.ts`).
+- Current behavior: scan-stage entry read errors are skipped and do not interrupt the process.
 
 #### `options.mapSpecifier`
 
