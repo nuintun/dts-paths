@@ -90,7 +90,7 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 #### `options.concurrency`
 
 - Type: `number`
-- Default: `os.cpus().length`（CPU 核心数）
+- Default: `os.cpus().length`
 - Controls concurrent tasks for directory scanning, specifier rewriting, and output-file renaming.
 
 #### `options.exclude`
