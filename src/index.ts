@@ -54,7 +54,7 @@ export async function resolvePaths(
   const schedule = scheduleTasks(concurrency);
   const compilerOptions = getCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
-  const files = scan(root, path => SCAN_DTS_RE.test(path) && !exclude(path));
+  const files = scan(root, path => SCAN_DTS_RE.test(path) && !exclude(path), schedule);
 
   for await (const file of files) {
     // collect importers

@@ -2,9 +2,10 @@
  * @module scanner
  */
 
-import { Dirent } from 'node:fs';
+import { Dirent, Stats } from 'node:fs';
+import { LimitFunction } from 'p-limit';
 import { join, resolve } from 'node:path';
-import { readdir } from 'node:fs/promises';
+import { lstat, readdir, realpath } from 'node:fs/promises';
 
 /**
  * @interface Filter
@@ -18,53 +19,116 @@ export interface Filter {
 }
 
 /**
- * @function read
- * @description read directory entries
- * @param path the directory path to read
+ * @interface ReadEntry
+ * @description an entry returned by the read function
  */
-async function read(path: string) {
-  const entries = await readdir(path, {
-    withFileTypes: true
-  });
-
-  return entries.values();
+interface ReadEntry {
+  /**
+   * @property name
+   * @description basename of the entry
+   */
+  name: string;
+  /**
+   * @property path
+   * @description full path of the entry
+   */
+  path: string;
+  /**
+   * @property source
+   * @description real path of the entry
+   */
+  source: string;
+  /**
+   * @property stat
+   * @description the stat of the entry
+   */
+  stat: Dirent | Stats;
 }
 
-// async generator to scan files in a directory recursively
-type Waiting = [string, Iterator<Dirent>];
+// waiting stack type
+type Waiting = [root: string, iterator: AsyncGenerator<ReadEntry>];
+
+/**
+ * @function read
+ * @description read directory entries
+ * @param root the root directory to read
+ * @param schedule the limit function to control concurrency
+ */
+async function* read(root: string, schedule: LimitFunction): AsyncGenerator<ReadEntry> {
+  const dirents = await readdir(root, {
+    withFileTypes: true
+  });
+  const entries: Promise<ReadEntry>[] = [];
+
+  for (const dirent of dirents) {
+    entries.push(
+      schedule(async () => {
+        const { name } = dirent;
+        const path = join(root, name);
+
+        let source = path;
+        let stat: Dirent | Stats = dirent;
+
+        if (dirent.isSymbolicLink()) {
+          source = await realpath(path);
+          stat = await lstat(source);
+        }
+
+        return { name, path, source, stat };
+      })
+    );
+  }
+
+  // wait for all entries to be read
+  const results = await Promise.allSettled(entries);
+
+  // yield fulfilled entries
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      yield result.value;
+    }
+  }
+}
 
 /**
  * @function scan
  * @description scan files in a directory recursively
  * @param root the root directory to scan for files
  * @param filter a filter function to determine which files to include
+ * @param schedule the limit function to control concurrency
  */
-export async function* scan(root: string, filter: Filter = () => true): AsyncGenerator<string> {
+export async function* scan(
+  root: string,
+  filter: Filter,
+  schedule: LimitFunction
+): AsyncGenerator<string> {
   root = resolve(root);
 
   const waiting: Waiting[] = [];
+  const visited = new Set<string>([await realpath(root)]);
 
-  let current: Waiting | undefined = ['', await read(root)];
+  let current: Waiting | undefined = [``, await read(root, schedule)];
 
   while (current) {
     const [, iterator] = current;
-    const item = iterator.next();
+    const result = await iterator.next();
 
-    if (item.done) {
+    if (result.done) {
       current = waiting.pop();
     } else {
-      const { value: stat } = item;
+      const entry = result.value;
 
-      if (!stat.isSymbolicLink()) {
-        const [dirname] = current;
-        const path = `${dirname}${stat.name}`;
+      if (!visited.has(entry.source)) {
+        visited.add(entry.source);
+
+        const [root] = current;
+        const { stat } = entry;
+        const path = `${root}${entry.name}`;
 
         if (stat.isFile() && filter(path)) {
-          yield join(root, path);
+          yield entry.path;
         } else if (stat.isDirectory()) {
-          const realpath = join(root, path);
-
-          waiting.push([`${path}/`, await read(realpath)]);
+          waiting.push([`${path}/`, await read(entry.path, schedule)]);
         }
       }
     }
