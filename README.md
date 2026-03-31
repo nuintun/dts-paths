@@ -120,6 +120,10 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Called in two places:
   - while rewriting import/export specifiers (`context.importer` is defined)
   - while renaming declaration output files (`context.importer` is undefined)
+- `context` contains:
+  - `path`: resolved file path being processed
+  - `extname`: original extension from the resolved target path
+  - `importer`: declaration file path that triggered the resolution (optional during rename stage)
 
 #### `options.onResolveFailed`
 
