@@ -31,8 +31,17 @@ export function getCompilerOptions(
     basePath = dirname(path);
     config = configFile.config;
   } else {
-    config = tsconfig;
+    const { compilerOptions = {} } = tsconfig;
+
     basePath = host.getCurrentDirectory();
+    config = {
+      extends: tsconfig.extends,
+      compilerOptions: {
+        paths: compilerOptions.paths,
+        rootDir: compilerOptions.rootDir,
+        preserveSymlinks: compilerOptions.preserveSymlinks
+      }
+    };
   }
 
   const { options, errors } = ts.parseJsonConfigFileContent(config, host, basePath);

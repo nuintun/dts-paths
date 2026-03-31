@@ -108,7 +108,15 @@ export interface TsConfig {
    * @property [compilerOptions]
    * @description overrides for typescript compiler options
    */
-  compilerOptions?: Pick<ts.CompilerOptions, 'paths' | 'rootDir'>;
+  compilerOptions?: Pick<
+    ts.CompilerOptions,
+    // typescript path alias
+    | 'paths'
+    // typescript root directory
+    | 'rootDir'
+    // typescript preserve symlinks
+    | 'preserveSymlinks'
+  >;
 }
 
 /**
