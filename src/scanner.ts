@@ -46,7 +46,12 @@ interface ReadEntry {
 }
 
 // waiting stack type
-type Waiting = [root: string, iterator: AsyncGenerator<ReadEntry>];
+type Waiting = [
+  // root path of the current iterator
+  root: string,
+  // async iterator of directory entries
+  iterator: AsyncGenerator<ReadEntry>
+];
 
 /**
  * @function read
