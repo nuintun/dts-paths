@@ -42,6 +42,8 @@ import { resolvePaths } from 'dts-paths';
 await resolvePaths('./dist/types', {
   // Supports tsconfig path or inline tsconfig object
   tsconfig: './tsconfig.json',
+  // Number of concurrent tasks for scanning/rewrite/rename stages
+  concurrency: 16,
   // Skip files that do not need to be processed
   exclude: path => path.includes('/internal/'),
   // Rewrite module specifiers before resolving
@@ -73,13 +75,30 @@ await resolvePaths('./dist/types', {
 
 ### `resolvePaths(root, options?)`
 
-Returns `Promise<Set<string>>`; the set contains files whose content was rewritten.
+Returns `Promise<Set<string>>`; the set contains files whose content was rewritten. If a rewritten declaration file is renamed by `mapExtension`, the returned path is the renamed file path.
 
 #### `options.tsconfig`
 
 - Type: `string | TsConfig`
-- Default: `'tsconfig.json'`
-- Supports either a tsconfig path or an inline object that includes `compilerOptions.paths` and `compilerOptions.rootDir`.
+- Default: `'./tsconfig.json'`
+- Supports either a tsconfig path or an inline object.
+- Supported inline `TsConfig.compilerOptions` fields:
+  - `paths`
+  - `rootDir`
+  - `preserveSymlinks`
+
+#### `options.concurrency`
+
+- Type: `number`
+- Default: `32`
+- Controls concurrent tasks for directory scanning, specifier rewriting, and output-file renaming.
+
+#### `options.exclude`
+
+- Type: `(path: string) => boolean`
+- Default: `() => false`
+- Filters declaration files during scanning.
+- `path` is the relative path (from `root`) built with POSIX separators (for example: `foo/bar.d.ts`).
 
 #### `options.mapSpecifier`
 
