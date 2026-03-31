@@ -42,7 +42,7 @@
   "homepage": "https://github.com/nuintun/dts-paths#readme",
   "scripts": {
     "lint": "tsc --noEmit",
-    "pretest": "pnpm build:main",
+    "pretest": "pnpm build",
     "clean": "node tools/clean.ts",
     "prepublishOnly": "pnpm build",
     "test": "node --test tests/index.ts",

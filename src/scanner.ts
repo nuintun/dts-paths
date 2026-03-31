@@ -1,5 +1,5 @@
 /**
- * @module fs
+ * @module scanner
  */
 
 import { Dirent } from 'node:fs';
@@ -34,15 +34,12 @@ async function read(path: string) {
 type Waiting = [string, Iterator<Dirent>];
 
 /**
- * @function scanFiles
+ * @function scan
  * @description scan files in a directory recursively
  * @param root the root directory to scan for files
  * @param filter a filter function to determine which files to include
  */
-export async function* scanFiles(
-  root: string,
-  filter: Filter = () => true
-): AsyncGenerator<string> {
+export async function* scan(root: string, filter: Filter = () => true): AsyncGenerator<string> {
   root = resolve(root);
 
   const waiting: Waiting[] = [];

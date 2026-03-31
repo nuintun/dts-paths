@@ -3,8 +3,8 @@
  */
 
 import ts from 'typescript';
-import { Filter } from './fs';
 import { cpus } from 'node:os';
+import { Filter } from './scanner';
 import { dirname, relative } from 'node:path';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 

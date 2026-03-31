@@ -12,7 +12,7 @@ import {
   SCAN_DTS_RE
 } from './shared';
 import ts from 'typescript';
-import { scanFiles } from './fs';
+import { scan } from './scanner';
 import { Options } from './types';
 import scheduleTasks from 'p-limit';
 import { rename } from 'node:fs/promises';
@@ -29,7 +29,7 @@ export type {
   Options,
   TsConfig
 } from './types';
-export type { Filter } from './fs';
+export type { Filter } from './scanner';
 
 /**
  * @function resolvePaths
@@ -54,7 +54,7 @@ export async function resolvePaths(
   const schedule = scheduleTasks(concurrency);
   const compilerOptions = getCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
-  const files = scanFiles(root, path => SCAN_DTS_RE.test(path) && !exclude(path));
+  const files = scan(root, path => SCAN_DTS_RE.test(path) && !exclude(path));
 
   for await (const file of files) {
     // collect importers

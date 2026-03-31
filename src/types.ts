@@ -3,7 +3,7 @@
  */
 
 import ts from 'typescript';
-import { Filter } from './fs';
+import { Filter } from './scanner';
 
 /**
  * @interface MapSpecifierContext
