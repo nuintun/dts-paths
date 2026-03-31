@@ -76,6 +76,7 @@ await resolvePaths('./dist/types', {
 ### `resolvePaths(root, options?)`
 
 Returns `Promise<Set<string>>`; the set contains files whose content was rewritten. If a rewritten declaration file is renamed by `mapExtension`, the returned path is the renamed file path.
+Scan-stage entry read errors are skipped and do not interrupt the process.
 
 #### `options.tsconfig`
 
@@ -99,7 +100,6 @@ Returns `Promise<Set<string>>`; the set contains files whose content was rewritt
 - Default: `() => false`
 - Filters declaration files during scanning.
 - `path` is the relative path (from `root`) built with POSIX separators (for example: `foo/bar.d.ts`).
-- Current behavior: scan-stage entry read errors are skipped and do not interrupt the process.
 
 #### `options.mapSpecifier`
 

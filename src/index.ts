@@ -35,6 +35,7 @@ export type { Filter } from './scanner';
  * @function resolvePaths
  * @param root the root directory to scan for typescript files
  * @param options the options for resolving paths
+ * @description scan-stage entry read errors are skipped and do not interrupt processing
  */
 export async function resolvePaths(
   root: string,
