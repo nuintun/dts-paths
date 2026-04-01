@@ -9,10 +9,10 @@ import pkg from '../package.json' with { type: 'json' };
 
 const externals = [
   // @ts-ignore
-  // Dependencies
+  // dependencies
   ...Object.keys(pkg.dependencies ?? {}),
   // @ts-ignore
-  // Peer dependencies
+  // peer dependencies
   ...Object.keys(pkg.peerDependencies ?? {})
 ];
 
@@ -29,8 +29,8 @@ const banner = `/**
 
 /**
  * @function rollup
- * @param {boolean} [esnext] Is esnext
- * @return {import('rollup').RollupOptions}
+ * @description rollup configuration
+ * @param {boolean} [esnext] is esnext
  */
 export default function rollup(esnext = false): RollupOptions {
   return {
