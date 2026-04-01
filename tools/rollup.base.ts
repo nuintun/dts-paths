@@ -37,9 +37,9 @@ export default function rollup(esnext = false): RollupOptions {
     input: 'src/index.ts',
     output: {
       banner,
-      interop: 'auto',
-      exports: 'auto',
       esModule: false,
+      interop: 'auto',
+      exports: 'named',
       preserveModules: true,
       dir: esnext ? 'esm' : 'cjs',
       format: esnext ? 'esm' : 'cjs',
