@@ -136,7 +136,9 @@ export interface Options {
   concurrency?: number;
   /**
    * @property [tsconfig]
-   * @description path to the typescript configuration file or configuration options
+   * @description tsconfig path or object.
+   * object is treated as a virtual tsconfig in cwd,
+   * following standard tsconfig rules.
    */
   tsconfig?: string | TsConfig;
   /**
