@@ -1,6 +1,6 @@
 {
   "name": "dts-paths",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Replace alias paths with relative paths after typescript compilation.",
   "type": "module",
   "sideEffects": false,
