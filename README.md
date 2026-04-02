@@ -88,6 +88,7 @@ Scan-stage entry read errors are skipped and do not interrupt the process.
   - `paths`
   - `rootDir`
   - `preserveSymlinks`
+- Use inline object is treated as a virtual tsconfig in cwd, following standard tsconfig rules.
 
 #### `options.concurrency`
 
