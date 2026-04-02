@@ -4,8 +4,6 @@
   "description": "Replace alias paths with relative paths after typescript compilation.",
   "type": "module",
   "sideEffects": false,
-  "main": "cjs/index.cjs",
-  "module": "esm/index.js",
   "exports": {
     ".": {
       "import": "./esm/index.js",
