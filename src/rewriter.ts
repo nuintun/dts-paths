@@ -27,13 +27,7 @@ function transformFile(
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ) {
-  const sourceFile = ts.createSourceFile(
-    path,
-    content,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS
-  );
+  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const source = new MagicString(content);
 
   /**
@@ -77,10 +71,7 @@ function transformFile(
     } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
       // import('...')
       literal = node.argument.literal;
-    } else if (
-      ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference)
-    ) {
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
       // import ... = require('...')
       literal = node.moduleReference.expression;
     }
@@ -114,14 +105,7 @@ export async function rewriteSpecifiersInFile(
   onResolveFailed: OnResolveFailed
 ): Promise<boolean> {
   const content = await readFile(path, 'utf8');
-  const source = transformFile(
-    path,
-    content,
-    mapSpecifier,
-    resolveModule,
-    mapExtension,
-    onResolveFailed
-  );
+  const source = transformFile(path, content, mapSpecifier, resolveModule, mapExtension, onResolveFailed);
 
   if (source.hasChanged()) {
     await writeFile(path, source.toString());

@@ -13,10 +13,7 @@ import { isString, throwIfDiagnostics } from './shared';
  * @param host the typescript system host, typically `ts.sys`
  * @param tsconfig path to tsconfig file or tsconfig object
  */
-export function getCompilerOptions(
-  host: ts.System,
-  tsconfig: string | TsConfig
-): ts.CompilerOptions {
+export function getCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
   let config: TsConfig;
   let basePath: string;
 
@@ -69,10 +66,7 @@ export interface ResolveModule {
  * @param host the typescript system host, typically `ts.sys`
  * @param compilerOptions compiler options to use for module resolution
  */
-export function createModuleResolver(
-  host: ts.System,
-  compilerOptions: ts.CompilerOptions
-): ResolveModule {
+export function createModuleResolver(host: ts.System, compilerOptions: ts.CompilerOptions): ResolveModule {
   const cache = ts.createModuleResolutionCache(
     host.getCurrentDirectory(),
     filename => {
@@ -86,13 +80,7 @@ export function createModuleResolver(
   );
 
   return function resolveModule(moduleName: string, containingFile: string) {
-    const { resolvedModule } = ts.resolveModuleName(
-      moduleName,
-      containingFile,
-      compilerOptions,
-      host,
-      cache
-    );
+    const { resolvedModule } = ts.resolveModuleName(moduleName, containingFile, compilerOptions, host, cache);
 
     return resolvedModule;
   };

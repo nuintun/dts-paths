@@ -102,11 +102,7 @@ async function* read(root: string, schedule: LimitFunction): AsyncGenerator<Read
  * @param filter a filter function to determine which files to include
  * @param schedule the limit function to control concurrency
  */
-export async function* scan(
-  root: string,
-  filter: Filter,
-  schedule: LimitFunction
-): AsyncGenerator<string> {
+export async function* scan(root: string, filter: Filter, schedule: LimitFunction): AsyncGenerator<string> {
   root = resolve(root);
 
   const waiting: Waiting[] = [];

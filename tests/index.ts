@@ -94,9 +94,7 @@ test('rewrite result should match static snapshots', async test => {
 
   assert.equal(dtsFiles.length, snapshotFiles.length);
 
-  const snapshotMap = new Map<string, string>(
-    snapshotFiles.map(file => [relative(SNAPSHOTS, file), file])
-  );
+  const snapshotMap = new Map<string, string>(snapshotFiles.map(file => [relative(SNAPSHOTS, file), file]));
 
   for (const file of dtsFiles) {
     const path = relative(dts, file);
@@ -104,10 +102,7 @@ test('rewrite result should match static snapshots', async test => {
 
     assert.ok(snapshotFile, `missing snapshot for ${path}`);
 
-    const [actual, expected] = await Promise.all([
-      readFile(file, 'utf8'),
-      readFile(snapshotFile, 'utf8')
-    ]);
+    const [actual, expected] = await Promise.all([readFile(file, 'utf8'), readFile(snapshotFile, 'utf8')]);
 
     assert.equal(actual, expected, `rewritten content mismatch for ${path}`);
   }

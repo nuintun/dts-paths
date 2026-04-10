@@ -64,15 +64,7 @@ export async function resolvePaths(
     // rewrite specifiers in parallel
     rewriteTasks.push(
       schedule(async () => {
-        if (
-          await rewriteSpecifiersInFile(
-            file,
-            mapSpecifier,
-            resolveModule,
-            mapExtension,
-            onResolveFailed
-          )
-        ) {
+        if (await rewriteSpecifiersInFile(file, mapSpecifier, resolveModule, mapExtension, onResolveFailed)) {
           changed.add(file);
         }
       })

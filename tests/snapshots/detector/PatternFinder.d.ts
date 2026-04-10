@@ -12,12 +12,5 @@ export declare class PatternFinder {
   protected match(x: number, y: number, scanline: number[], overscan: number): void;
 }
 export interface MatchAction {
-  (
-    x: number,
-    y: number,
-    scanline: number[],
-    count: number,
-    scanlineBits: number[],
-    lastBit: number
-  ): void;
+  (x: number, y: number, scanline: number[], count: number, scanlineBits: number[], lastBit: number): void;
 }
