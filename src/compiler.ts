@@ -123,26 +123,17 @@ function toResolvedModule(path: string): ResolvedModule {
 }
 
 /**
- * @function createResolver
- * @description creates an Oxc resolver
- * @param preserveSymlinks whether to preserve symbolic links
- */
-function createResolver(preserveSymlinks: boolean): ResolverFactory {
-  return new ResolverFactory({
-    symlinks: !preserveSymlinks,
-    extensions: ['.d.ts', '.d.mts', '.d.cts']
-  });
-}
-
-/**
  * @function createInlineResolver
  * @description creates a resolver for an inline tsconfig
  * @param tsconfig the inline tsconfig
  */
 function createInlineResolver(tsconfig: TsConfig): ResolveModule {
   const basePath = process.cwd();
+  const resolver = new ResolverFactory({
+    extensions: ['.d.ts', '.d.mts', '.d.cts'],
+    symlinks: tsconfig.compilerOptions?.preserveSymlinks
+  });
   const paths = createTsPaths(tsconfig.compilerOptions?.paths ?? {}, basePath);
-  const resolver = createResolver(tsconfig.compilerOptions?.preserveSymlinks ?? false);
 
   return async (moduleName, containingFile) => {
     for (const path of paths) {
