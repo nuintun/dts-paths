@@ -37,12 +37,6 @@ export interface ResolvedModule {
 // regular expression to match node_modules path
 const NODE_MODULES_RE = /(?:^|[\\/])node_modules(?:[\\/]|$)/;
 
-// regular expression to match relative module specifier
-const RELATIVE_SPECIFIER_RE = /^\.{1,2}(?:[\\/]|$)/;
-
-// regular expression to match JavaScript module extensions
-const MODULE_EXT_RE = /\.(?:js|mjs|cjs)$/i;
-
 /**
  * @function isExternalLibraryImport
  * @description checks whether a resolved path belongs to node_modules
@@ -117,15 +111,6 @@ function matchTsPath(path: TsPath, specifier: string): string[] | undefined {
 }
 
 /**
- * @function stripModuleExtension
- * @description removes a JavaScript module extension from a relative specifier
- * @param specifier the module specifier
- */
-function stripModuleExtension(specifier: string): string {
-  return specifier.replace(MODULE_EXT_RE, '');
-}
-
-/**
  * @function toResolvedModule
  * @description converts a resolver result to a resolved module
  * @param path the resolved file path
@@ -135,23 +120,6 @@ function toResolvedModule(path: string): ResolvedModule {
     resolvedFileName: path,
     isExternalLibraryImport: isExternalLibraryImport(path)
   };
-}
-
-/**
- * @function resolveDeclaration
- * @description resolves a declaration module specifier
- * @param resolver the resolver
- * @param moduleName the module name
- * @param containingFile the file that contains the module reference
- */
-async function resolveDeclaration(resolver: ResolverFactory, moduleName: string, containingFile: string) {
-  let result = await resolver.resolveFileAsync(containingFile, moduleName);
-
-  if (!result.path && RELATIVE_SPECIFIER_RE.test(moduleName) && MODULE_EXT_RE.test(moduleName)) {
-    result = await resolver.resolveDtsAsync(containingFile, stripModuleExtension(moduleName));
-  }
-
-  return result;
 }
 
 /**
@@ -193,7 +161,7 @@ function createInlineResolver(tsconfig: TsConfig): ResolveModule {
       }
     }
 
-    const result = await resolveDeclaration(resolver, moduleName, containingFile);
+    const result = await resolver.resolveDtsAsync(containingFile, moduleName);
 
     return result.path ? toResolvedModule(result.path) : undefined;
   };
@@ -218,7 +186,7 @@ export function createModuleResolver(tsconfig: string | TsConfig): ResolveModule
   });
 
   return async (moduleName, containingFile) => {
-    const result = await resolveDeclaration(resolver, moduleName, containingFile);
+    const result = await resolver.resolveDtsAsync(containingFile, moduleName);
 
     return result.path ? toResolvedModule(result.path) : undefined;
   };
