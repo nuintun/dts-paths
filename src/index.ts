@@ -15,7 +15,7 @@ import { scan } from './scanner';
 import { Options } from './types';
 import scheduleTasks from 'p-limit';
 import { rename } from 'node:fs/promises';
-import { createModuleResolver } from './compiler';
+import { createModuleResolver } from './resolver';
 import { rewriteSpecifiersInFile } from './rewriter';
 
 export type {

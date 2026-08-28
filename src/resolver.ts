@@ -1,8 +1,9 @@
 /**
- * @module compiler
+ * @module resolver
  */
 
 import { TsConfig } from './types';
+import { isString } from './shared';
 import { resolve } from 'node:path';
 import { ResolveResult, ResolverFactory } from 'oxc-resolver';
 
@@ -45,7 +46,7 @@ function createInlineResolver({ compilerOptions }: TsConfig): ResolveModule {
  * @param tsconfig typescript configuration path or inline configuration
  */
 export function createModuleResolver(tsconfig: string | TsConfig): ResolveModule {
-  if (typeof tsconfig !== 'string') {
+  if (!isString(tsconfig)) {
     return createInlineResolver(tsconfig);
   }
 

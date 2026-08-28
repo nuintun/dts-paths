@@ -4,7 +4,7 @@
 
 import { toRelative } from './shared';
 import MagicString from 'magic-string';
-import { ResolveModule } from './compiler';
+import { ResolveModule } from './resolver';
 import { parse, Visitor } from 'oxc-parser';
 import { readFile, writeFile } from 'node:fs/promises';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
