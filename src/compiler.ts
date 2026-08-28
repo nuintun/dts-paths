@@ -80,10 +80,12 @@ function createInlineResolver(tsconfig: TsConfig): ResolveModule {
       prefix: star === -1 ? key : key.slice(0, star),
       suffix: star === -1 ? '' : key.slice(star + 1),
       targets: targets.map(target => {
+        const star = target.indexOf('*');
+
         return {
-          prefix: resolveTsPath(target.slice(0, Math.max(target.indexOf('*'), 0)), basePath),
-          suffix: target.indexOf('*') === -1 ? '' : target.slice(target.indexOf('*') + 1),
-          hasStar: target.includes('*')
+          prefix: star === -1 ? resolveTsPath(target, basePath) : target.slice(0, star),
+          suffix: star === -1 ? '' : target.slice(star + 1),
+          hasStar: star !== -1
         };
       })
     };
@@ -95,10 +97,12 @@ function createInlineResolver(tsconfig: TsConfig): ResolveModule {
         continue;
       }
 
-      const matched = moduleName.slice(alias.prefix.length, moduleName.length - alias.suffix.length);
+      const matched = alias.suffix
+        ? moduleName.slice(alias.prefix.length, moduleName.length - alias.suffix.length)
+        : moduleName.slice(alias.prefix.length);
 
       for (const target of alias.targets) {
-        const request = target.hasStar ? `${target.prefix}${matched}${target.suffix}` : target.prefix;
+        const request = target.hasStar ? resolveTsPath(`${target.prefix}${matched}${target.suffix}`, basePath) : target.prefix;
 
         const result = await resolver.resolveDtsAsync(containingFile, request);
 
