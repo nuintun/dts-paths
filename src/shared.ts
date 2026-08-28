@@ -1,8 +1,7 @@
 /**
- * @module rewriter
+ * @module shared
  */
 
-import ts from 'typescript';
 import { cpus } from 'node:os';
 import { Filter } from './scanner';
 import { dirname, relative } from 'node:path';
@@ -61,35 +60,23 @@ export function isString(value: unknown): value is string {
 }
 
 /**
- * @function throwIfDiagnostics
- * @description throws an error if diagnostics are present
- * @param host the typescript system host, typically `ts.sys`
- * @param diagnostics the diagnostics to check
- */
-export function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
-  if (diagnostics.length > 0) {
-    throw new Error(
-      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-        getNewLine: () => '\n',
-        getCanonicalFileName: name => name,
-        getCurrentDirectory: host.getCurrentDirectory
-      })
-    );
-  }
-}
-
-/**
  * @function toRelative
  * @description converts a path to a relative path
  * @param from the source path
  * @param to the target path
  * @param mapExtension a function that maps file extensions based on the importer
  */
-export function toRelative(from: string, to: string, mapExtension: MapExtension) {
+export function toRelative(from: string, to: string, mapExtension: MapExtension): string {
   let path = relative(dirname(from), to);
 
   path = path.replace(MODULE_EXT_RE, (match, extname?: string) => {
-    return extname ? mapExtension({ path: to, extname, importer: from }) : match;
+    return extname
+      ? mapExtension({
+          path: to,
+          extname,
+          importer: from
+        })
+      : match;
   });
 
   if (!path.startsWith('.')) {

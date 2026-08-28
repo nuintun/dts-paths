@@ -11,13 +11,12 @@ import {
   IMPORTER_EXT_RE,
   SCAN_DTS_RE
 } from './shared';
-import ts from 'typescript';
 import { scan } from './scanner';
 import { Options } from './types';
 import scheduleTasks from 'p-limit';
 import { rename } from 'node:fs/promises';
+import { createModuleResolver } from './compiler';
 import { rewriteSpecifiersInFile } from './rewriter';
-import { createModuleResolver, getCompilerOptions } from './compiler';
 
 export type {
   MapExtension,
@@ -29,6 +28,7 @@ export type {
   Options,
   TsConfig
 } from './types';
+
 export type { Filter } from './scanner';
 
 /**
@@ -48,13 +48,11 @@ export async function resolvePaths(
     onResolveFailed = DEFAULT_ON_RESOLVE_FAILED
   }: Options = {}
 ): Promise<Set<string>> {
-  const host = ts.sys;
   const importers: string[] = [];
   const changed = new Set<string>();
   const rewriteTasks: Promise<void>[] = [];
   const schedule = scheduleTasks(concurrency);
-  const compilerOptions = getCompilerOptions(host, tsconfig);
-  const resolveModule = createModuleResolver(host, compilerOptions);
+  const resolveModule = createModuleResolver(tsconfig);
   const files = scan(root, path => SCAN_DTS_RE.test(path) && !exclude(path), schedule);
 
   for await (const file of files) {
@@ -79,7 +77,10 @@ export async function resolvePaths(
     importers.map(importer => {
       return schedule(async () => {
         const path = importer.replace(IMPORTER_EXT_RE, extname => {
-          return mapExtension({ path: importer, extname });
+          return mapExtension({
+            path: importer,
+            extname
+          });
         });
 
         if (path !== importer) {

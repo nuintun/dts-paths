@@ -2,7 +2,6 @@
  * @module types
  */
 
-import ts from 'typescript';
 import { Filter } from './scanner';
 
 /**
@@ -46,7 +45,7 @@ export interface MapExtensionContext {
 
 /**
  * @interface OnResolveFailedContext
- * @description context for handling failed module resolution
+ * @description context for handling module resolution failure
  */
 export interface OnResolveFailedContext {
   /**
@@ -67,7 +66,7 @@ export interface OnResolveFailedContext {
  */
 export interface MapSpecifier {
   /**
-   * @param context the context for mapping the module specifier
+   * @param context the context for mapping module specifiers
    */
   (context: MapSpecifierContext): string;
 }
@@ -85,7 +84,7 @@ export interface MapExtension {
 
 /**
  * @interface OnResolveFailed
- * @description a callback function that is called when module resolution fails
+ * @description a function that is called when module resolution fails
  */
 export interface OnResolveFailed {
   /**
@@ -108,15 +107,14 @@ export interface TsConfig {
    * @property [compilerOptions]
    * @description overrides for typescript compiler options
    */
-  compilerOptions?: Pick<
-    ts.CompilerOptions,
-    // typescript path alias
-    | 'paths'
+  compilerOptions?: {
     // typescript root directory
-    | 'rootDir'
+    rootDir?: string;
     // typescript preserve symlinks
-    | 'preserveSymlinks'
-  >;
+    preserveSymlinks?: boolean;
+    // typescript path alias
+    paths?: Record<string, string[]>;
+  };
 }
 
 /**

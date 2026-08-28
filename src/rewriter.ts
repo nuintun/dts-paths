@@ -2,24 +2,24 @@
  * @module rewriter
  */
 
-import ts from 'typescript';
 import { toRelative } from './shared';
 import MagicString from 'magic-string';
 import { ResolveModule } from './compiler';
+import { parse, Visitor } from 'oxc-parser';
 import { readFile, writeFile } from 'node:fs/promises';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
 /**
  * @function transformFile
- * @description transforms a typescript file by rewriting its module specifiers
- * @param path the file path of the typescript file to transform
- * @param content the content of the typescript file
+ * @description transforms a declaration file by rewriting its module specifiers
+ * @param path the file path of the declaration file to transform
+ * @param content the content of the declaration file
  * @param mapSpecifier a function that maps module specifiers
- * @param resolveModule a function that resolves module names to resolved modules
- * @param mapExtension a function that maps file extensions based on the importer
- * @param onResolveFailed a callback function that is called when module resolution fails
+ * @param resolveModule a function that resolves module names
+ * @param mapExtension a function that maps file extensions
+ * @param onResolveFailed a callback that is called when module resolution fails
  */
-function transformFile(
+async function transformFile(
   path: string,
   content: string,
   mapSpecifier: MapSpecifier,
@@ -27,7 +27,22 @@ function transformFile(
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ) {
-  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const result = await parse(path, content, {
+    lang: 'dts',
+    astType: 'ts'
+  });
+
+  if (result.errors.length > 0) {
+    throw new Error(
+      result.errors
+        .map(error => {
+          return error.codeframe ?? error.message;
+        })
+        .join('\n')
+    );
+  }
+
+  const tasks: Promise<void>[] = [];
   const source = new MagicString(content);
 
   /**
@@ -35,67 +50,82 @@ function transformFile(
    * @description rewrites a module specifier if it can be resolved
    * @param literal the string literal representing the module specifier
    */
-  function rewriteSpecifier(literal: ts.StringLiteral) {
-    const specifier = literal.text;
-    const mappedSpecifier = mapSpecifier({ specifier, importer: path });
-    const resolved = resolveModule(mappedSpecifier, path);
+  function rewriteSpecifier(literal: { value: string; start: number; end: number }) {
+    tasks.push(
+      (async () => {
+        const specifier = literal.value;
+        const mappedSpecifier = mapSpecifier({
+          specifier,
+          importer: path
+        });
 
-    if (resolved) {
-      let resolvedSpecifier: string;
+        const resolved = await resolveModule(mappedSpecifier, path);
 
-      if (resolved.isExternalLibraryImport) {
-        resolvedSpecifier = mappedSpecifier;
-      } else {
-        resolvedSpecifier = toRelative(path, resolved.resolvedFileName, mapExtension);
-      }
+        if (!resolved) {
+          onResolveFailed({
+            specifier,
+            importer: path
+          });
 
-      if (resolvedSpecifier !== specifier) {
-        source.overwrite(literal.getStart(sourceFile) + 1, literal.getEnd() - 1, resolvedSpecifier);
-      }
-    } else {
-      onResolveFailed({ specifier, importer: path });
-    }
+          return;
+        }
+
+        let resolvedSpecifier: string;
+
+        if (resolved.isExternalLibraryImport) {
+          resolvedSpecifier = mappedSpecifier;
+        } else {
+          resolvedSpecifier = toRelative(path, resolved.resolvedFileName, mapExtension);
+        }
+
+        if (resolvedSpecifier !== specifier) {
+          source.overwrite(literal.start + 1, literal.end - 1, resolvedSpecifier);
+        }
+      })()
+    );
   }
 
-  /**
-   * @function visit
-   * @description visits each node in the AST and rewrites module specifiers
-   * @param node the current ast node being visited
-   */
-  function visit(node: ts.Node) {
-    let literal: ts.Node | undefined;
+  const visitor = new Visitor({
+    ImportDeclaration(node) {
+      rewriteSpecifier(node.source);
+    },
 
-    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-      // import/export ... from 'module'
-      literal = node.moduleSpecifier;
-    } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
-      // import('...')
-      literal = node.argument.literal;
-    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
-      // import ... = require('...')
-      literal = node.moduleReference.expression;
+    ExportNamedDeclaration(node) {
+      if (node.source) {
+        rewriteSpecifier(node.source);
+      }
+    },
+
+    ExportAllDeclaration(node) {
+      rewriteSpecifier(node.source);
+    },
+
+    TSImportType(node) {
+      rewriteSpecifier(node.source);
+    },
+
+    TSImportEqualsDeclaration(node) {
+      if (node.moduleReference.type === 'TSExternalModuleReference') {
+        rewriteSpecifier(node.moduleReference.expression);
+      }
     }
+  });
 
-    if (literal && ts.isStringLiteral(literal)) {
-      rewriteSpecifier(literal);
-    }
+  visitor.visit(result.program);
 
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
+  await Promise.all(tasks);
 
   return source;
 }
 
 /**
  * @function rewriteSpecifiersInFile
- * @description Rewrites module specifiers in a typescript file
- * @param path the file path of the typescript file to rewrite
+ * @description Rewrites module specifiers in a declaration file
+ * @param path the file path of the declaration file
  * @param mapSpecifier a function that maps module specifiers
- * @param resolveModule a function that resolves module names to resolved modules
- * @param mapExtension a function that maps file extensions based on the importer
- * @param onResolveFailed a callback function that is called when module resolution fails
+ * @param resolveModule a function that resolves module names
+ * @param mapExtension a function that maps file extensions
+ * @param onResolveFailed a callback that is called when module resolution fails
  */
 export async function rewriteSpecifiersInFile(
   path: string,
@@ -105,7 +135,7 @@ export async function rewriteSpecifiersInFile(
   onResolveFailed: OnResolveFailed
 ): Promise<boolean> {
   const content = await readFile(path, 'utf8');
-  const source = transformFile(path, content, mapSpecifier, resolveModule, mapExtension, onResolveFailed);
+  const source = await transformFile(path, content, mapSpecifier, resolveModule, mapExtension, onResolveFailed);
 
   if (source.hasChanged()) {
     await writeFile(path, source.toString());
