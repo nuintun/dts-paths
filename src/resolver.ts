@@ -7,6 +7,14 @@ import { isString } from './shared';
 import { resolve } from 'node:path';
 import { ResolveResult, ResolverFactory } from 'oxc-resolver';
 
+const EXTENSION_ALIAS = {
+  '.js': ['.d.ts'],
+  '.cjs': ['.d.cts'],
+  '.mjs': ['.d.mts']
+};
+
+const EXTENSIONS = ['.d.ts', '.d.mts', '.d.cts'];
+
 /**
  * @typedef ResolveModule
  * @description resolves a module name to a resolved module
@@ -24,15 +32,11 @@ export interface ResolveModule {
  */
 function createInlineResolver({ compilerOptions }: TsConfig): ResolveModule {
   const resolver = new ResolverFactory({
-    extensionAlias: {
-      '.js': ['.d.ts'],
-      '.cjs': ['.d.cts'],
-      '.mjs': ['.d.mts']
-    },
+    extensions: EXTENSIONS,
     alias: compilerOptions?.paths,
-    extensions: ['.d.ts', '.d.mts', '.d.cts'],
-    roots: [compilerOptions?.rootDir ?? process.cwd()],
-    symlinks: compilerOptions?.preserveSymlinks ?? false
+    extensionAlias: EXTENSION_ALIAS,
+    symlinks: !compilerOptions?.preserveSymlinks,
+    roots: [compilerOptions?.rootDir ?? process.cwd()]
   });
 
   return (moduleName, containingFile) => {
@@ -51,16 +55,12 @@ export function createModuleResolver(tsconfig: string | TsConfig): ResolveModule
   }
 
   const resolver = new ResolverFactory({
-    extensionAlias: {
-      '.js': ['.d.ts'],
-      '.cjs': ['.d.cts'],
-      '.mjs': ['.d.mts']
-    },
+    extensions: EXTENSIONS,
+    extensionAlias: EXTENSION_ALIAS,
     tsconfig: {
       references: 'auto',
       configFile: resolve(tsconfig)
-    },
-    extensions: ['.d.ts', '.d.mts', '.d.cts']
+    }
   });
 
   return (moduleName, containingFile) => {
