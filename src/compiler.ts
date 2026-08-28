@@ -3,8 +3,8 @@
  */
 
 import { TsConfig } from './types';
-import { ResolverFactory } from 'oxc-resolver';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { resolve } from 'node:path';
+import { ResolveResult, ResolverFactory } from 'oxc-resolver';
 
 /**
  * @typedef ResolveModule
@@ -13,113 +13,7 @@ import { dirname, isAbsolute, resolve } from 'node:path';
  * @param containingFile the file that contains the module reference
  */
 export interface ResolveModule {
-  (moduleName: string, containingFile: string): Promise<ResolvedModule | undefined>;
-}
-
-/**
- * @interface ResolvedModule
- * @description resolved module
- */
-export interface ResolvedModule {
-  /**
-   * @property resolvedFileName
-   * @description resolved file path
-   */
-  resolvedFileName: string;
-
-  /**
-   * @property isExternalLibraryImport
-   * @description whether the module is an external library import
-   */
-  isExternalLibraryImport: boolean;
-}
-
-// regular expression to match node_modules path
-const NODE_MODULES_RE = /(?:^|[\\/])node_modules(?:[\\/]|$)/;
-
-/**
- * @function isExternalLibraryImport
- * @description checks whether a resolved path belongs to node_modules
- * @param path the resolved file path
- */
-function isExternalLibraryImport(path: string): boolean {
-  return NODE_MODULES_RE.test(path);
-}
-
-/**
- * @function resolveTsPath
- * @description resolves a tsconfig path target relative to the config directory
- * @param path the path target
- * @param basePath the config directory
- */
-function resolveTsPath(path: string, basePath: string): string {
-  return isAbsolute(path) ? resolve(path) : resolve(basePath, path);
-}
-
-/**
- * @interface TsPath
- * @description a TypeScript path mapping
- */
-interface TsPath {
-  prefix: string;
-  suffix: string;
-  targets: string[];
-}
-
-/**
- * @function createTsPaths
- * @description creates TypeScript path mappings
- * @param paths the TypeScript path mappings
- * @param basePath the tsconfig directory
- */
-function createTsPaths(paths: Record<string, string[]>, basePath: string): TsPath[] {
-  return Object.entries(paths)
-    .map(([key, targets]) => {
-      const star = key.indexOf('*');
-
-      return {
-        prefix: star === -1 ? key : key.slice(0, star),
-        suffix: star === -1 ? '' : key.slice(star + 1),
-        targets: targets.map(target => {
-          return resolveTsPath(target, basePath);
-        })
-      };
-    })
-    .sort((a, b) => {
-      return b.prefix.length - a.prefix.length;
-    });
-}
-
-/**
- * @function matchTsPath
- * @description matches a module specifier against a TypeScript path mapping
- * @param path the TypeScript path mapping
- * @param specifier the module specifier
- */
-function matchTsPath(path: TsPath, specifier: string): string[] | undefined {
-  if (!specifier.startsWith(path.prefix) || !specifier.endsWith(path.suffix)) {
-    return undefined;
-  }
-
-  const start = path.prefix.length;
-  const end = specifier.length - path.suffix.length;
-  const matched = specifier.slice(start, end);
-
-  return path.targets.map(target => {
-    return target.replace(/\*/g, matched);
-  });
-}
-
-/**
- * @function toResolvedModule
- * @description converts a resolver result to a resolved module
- * @param path the resolved file path
- */
-function toResolvedModule(path: string): ResolvedModule {
-  return {
-    resolvedFileName: path,
-    isExternalLibraryImport: isExternalLibraryImport(path)
-  };
+  (moduleName: string, containingFile: string): Promise<ResolveResult>;
 }
 
 /**
@@ -127,34 +21,21 @@ function toResolvedModule(path: string): ResolvedModule {
  * @description creates a resolver for an inline tsconfig
  * @param tsconfig the inline tsconfig
  */
-function createInlineResolver(tsconfig: TsConfig): ResolveModule {
-  const basePath = process.cwd();
+function createInlineResolver({ compilerOptions }: TsConfig): ResolveModule {
   const resolver = new ResolverFactory({
+    extensionAlias: {
+      '.js': ['.d.ts'],
+      '.cjs': ['.d.cts'],
+      '.mjs': ['.d.mts']
+    },
+    alias: compilerOptions?.paths,
     extensions: ['.d.ts', '.d.mts', '.d.cts'],
-    symlinks: tsconfig.compilerOptions?.preserveSymlinks
+    roots: [compilerOptions?.rootDir ?? process.cwd()],
+    symlinks: compilerOptions?.preserveSymlinks ?? false
   });
-  const paths = createTsPaths(tsconfig.compilerOptions?.paths ?? {}, basePath);
 
-  return async (moduleName, containingFile) => {
-    for (const path of paths) {
-      const matched = matchTsPath(path, moduleName);
-
-      if (!matched) {
-        continue;
-      }
-
-      for (const request of matched) {
-        const result = await resolver.async(dirname(containingFile), request);
-
-        if (result.path) {
-          return toResolvedModule(result.path);
-        }
-      }
-    }
-
-    const result = await resolver.resolveDtsAsync(containingFile, moduleName);
-
-    return result.path ? toResolvedModule(result.path) : undefined;
+  return (moduleName, containingFile) => {
+    return resolver.resolveFileAsync(containingFile, moduleName);
   };
 }
 
@@ -169,6 +50,11 @@ export function createModuleResolver(tsconfig: string | TsConfig): ResolveModule
   }
 
   const resolver = new ResolverFactory({
+    extensionAlias: {
+      '.js': ['.d.ts'],
+      '.cjs': ['.d.cts'],
+      '.mjs': ['.d.mts']
+    },
     tsconfig: {
       references: 'auto',
       configFile: resolve(tsconfig)
@@ -176,9 +62,7 @@ export function createModuleResolver(tsconfig: string | TsConfig): ResolveModule
     extensions: ['.d.ts', '.d.mts', '.d.cts']
   });
 
-  return async (moduleName, containingFile) => {
-    const result = await resolver.resolveDtsAsync(containingFile, moduleName);
-
-    return result.path ? toResolvedModule(result.path) : undefined;
+  return (moduleName, containingFile) => {
+    return resolver.resolveFileAsync(containingFile, moduleName);
   };
 }

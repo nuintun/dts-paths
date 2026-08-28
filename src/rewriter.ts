@@ -9,6 +9,9 @@ import { parse, Visitor } from 'oxc-parser';
 import { readFile, writeFile } from 'node:fs/promises';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 
+// regular expression to match node_modules path
+const NODE_MODULES_RE = /(?:^|[\\/])node_modules(?:[\\/]|$)/;
+
 /**
  * @function transformFile
  * @description transforms a declaration file by rewriting its module specifiers
@@ -61,24 +64,16 @@ async function transformFile(
 
         const resolved = await resolveModule(mappedSpecifier, path);
 
-        if (!resolved) {
-          onResolveFailed({
+        if (resolved.path == null) {
+          return onResolveFailed({
             specifier,
             importer: path
           });
-
-          return;
         }
 
-        let resolvedSpecifier: string;
+        const resolvedSpecifier = toRelative(path, resolved.path, mapExtension);
 
-        if (resolved.isExternalLibraryImport) {
-          resolvedSpecifier = mappedSpecifier;
-        } else {
-          resolvedSpecifier = toRelative(path, resolved.resolvedFileName, mapExtension);
-        }
-
-        if (resolvedSpecifier !== specifier) {
+        if (resolvedSpecifier !== specifier && !NODE_MODULES_RE.test(resolvedSpecifier)) {
           source.overwrite(literal.start + 1, literal.end - 1, resolvedSpecifier);
         }
       })()
