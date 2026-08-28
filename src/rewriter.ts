@@ -27,8 +27,8 @@ function transformFile(
   mapExtension: MapExtension,
   onResolveFailed: OnResolveFailed
 ) {
-  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const source = new MagicString(content);
+  const sourceFile = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
   /**
    * @function rewriteSpecifier
