@@ -2,9 +2,9 @@
  * @module compiler
  */
 
-import { dirname, isAbsolute, resolve } from 'node:path';
-import { ResolverFactory } from 'oxc-resolver';
 import { TsConfig } from './types';
+import { ResolverFactory } from 'oxc-resolver';
+import { dirname, isAbsolute, resolve } from 'node:path';
 
 /**
  * @typedef ResolveModule
