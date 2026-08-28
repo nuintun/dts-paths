@@ -5,7 +5,7 @@
 import ts from 'typescript';
 import { toRelative } from './shared';
 import MagicString from 'magic-string';
-import { ResolveModule } from './compiler';
+import { ResolveModule } from './resolver';
 import { readFile, writeFile } from 'node:fs/promises';
 import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
 

@@ -5,8 +5,8 @@
 import ts from 'typescript';
 import { cpus } from 'node:os';
 import { Filter } from './scanner';
-import { dirname, relative } from 'node:path';
-import { MapExtension, MapSpecifier, OnResolveFailed } from './types';
+import { dirname, relative, resolve } from 'node:path';
+import { MapExtension, MapSpecifier, OnResolveFailed, TsConfig } from './types';
 
 // extension mapping table
 const EXTENSION_MAP: Record<string, string> = {
@@ -61,24 +61,6 @@ export function isString(value: unknown): value is string {
 }
 
 /**
- * @function throwIfDiagnostics
- * @description throws an error if diagnostics are present
- * @param host the typescript system host, typically `ts.sys`
- * @param diagnostics the diagnostics to check
- */
-export function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
-  if (diagnostics.length > 0) {
-    throw new Error(
-      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
-        getNewLine: () => '\n',
-        getCanonicalFileName: name => name,
-        getCurrentDirectory: host.getCurrentDirectory
-      })
-    );
-  }
-}
-
-/**
  * @function toRelative
  * @description converts a path to a relative path
  * @param from the source path
@@ -97,4 +79,65 @@ export function toRelative(from: string, to: string, mapExtension: MapExtension)
   }
 
   return path.replace(/\\/g, '/');
+}
+
+/**
+ * @function throwIfDiagnostics
+ * @description throws an error if diagnostics are present
+ * @param host the typescript system host, typically `ts.sys`
+ * @param diagnostics the diagnostics to check
+ */
+export function throwIfDiagnostics(host: ts.System, diagnostics: readonly ts.Diagnostic[]): void {
+  if (diagnostics.length > 0) {
+    throw new Error(
+      ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+        getNewLine: () => '\n',
+        getCanonicalFileName: name => name,
+        getCurrentDirectory: host.getCurrentDirectory
+      })
+    );
+  }
+}
+
+/**
+ * @function resolveCompilerOptions
+ * @description loads and parses typescript compiler options
+ * @param host the typescript system host, typically `ts.sys`
+ * @param tsconfig path to tsconfig file or tsconfig object
+ */
+export function resolveCompilerOptions(host: ts.System, tsconfig: string | TsConfig): ts.CompilerOptions {
+  let config: TsConfig;
+  let basePath: string;
+
+  if (isString(tsconfig)) {
+    const path = resolve(tsconfig);
+    const configFile = ts.readConfigFile(path, host.readFile);
+
+    if (configFile.error) {
+      throwIfDiagnostics(host, [configFile.error]);
+    }
+
+    basePath = dirname(path);
+    config = configFile.config;
+  } else {
+    const { compilerOptions = {} } = tsconfig;
+
+    basePath = host.getCurrentDirectory();
+    config = {
+      extends: tsconfig.extends,
+      compilerOptions: {
+        paths: compilerOptions.paths,
+        rootDir: compilerOptions.rootDir,
+        preserveSymlinks: compilerOptions.preserveSymlinks
+      }
+    };
+  }
+
+  const { options, errors } = ts.parseJsonConfigFileContent(config, host, basePath);
+
+  throwIfDiagnostics(host, errors);
+
+  options.declaration = false;
+
+  return options;
 }

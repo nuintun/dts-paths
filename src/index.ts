@@ -9,6 +9,7 @@ import {
   DEFAULT_MAP_SPECIFIER,
   DEFAULT_ON_RESOLVE_FAILED,
   IMPORTER_EXT_RE,
+  resolveCompilerOptions,
   SCAN_DTS_RE
 } from './shared';
 import ts from 'typescript';
@@ -16,8 +17,8 @@ import { scan } from './scanner';
 import { Options } from './types';
 import scheduleTasks from 'p-limit';
 import { rename } from 'node:fs/promises';
+import { createModuleResolver } from './resolver';
 import { rewriteSpecifiersInFile } from './rewriter';
-import { createModuleResolver, getCompilerOptions } from './compiler';
 
 export type {
   MapExtension,
@@ -53,7 +54,7 @@ export async function resolvePaths(
   const changed = new Set<string>();
   const rewriteTasks: Promise<void>[] = [];
   const schedule = scheduleTasks(concurrency);
-  const compilerOptions = getCompilerOptions(host, tsconfig);
+  const compilerOptions = resolveCompilerOptions(host, tsconfig);
   const resolveModule = createModuleResolver(host, compilerOptions);
   const files = scan(root, path => SCAN_DTS_RE.test(path) && !exclude(path), schedule);
 
